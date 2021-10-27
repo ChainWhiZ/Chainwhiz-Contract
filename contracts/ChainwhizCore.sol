@@ -5,6 +5,7 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "hardhat/console.sol";
+
 contract ChainwhizCore is Initializable, ReentrancyGuard {
     //************************   State Variables   ************************ */
     address public ChainwhizAdmin;
@@ -40,7 +41,7 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
         QuestionStatus questionStatus;
     }
 
-    struct Solution{
+    struct Solution {
         address solver;
         string solutionLink;
         uint256 timeOfPosting;
@@ -48,7 +49,7 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
         EscrowStatus escrowStatus;
     }
 
-    struct Vote{
+    struct Vote {
         address voter;
         uint256 votingPower;
         uint256 amountStaked;
@@ -63,24 +64,29 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
     mapping(string => address) public publisher;
     //mapping publisher address to issue link
     mapping(address => mapping(string => Question)) public issueDetail;
-    
 
     //Mapping for Voter
     //mapping github id to solver address
     mapping(string => address) public voter;
     //mapping solutionLink to voter address which in turn is mapped to vote details
-    mapping(string => mapping(address=>Vote)) public voteDetails;
+    mapping(string => mapping(address => Vote)) public voteDetails;
 
     //Mapping for Solver
     //mapping for github id and the solver address
     mapping(string => address) public solver;
     //mapping issue link to solver githubid which is turn is mapped to the solution details
-    mapping(string => mapping(string=> Solution)) public solutionDetails;
+    mapping(string => mapping(string => Solution)) public solutionDetails;
 
     //************************   Events   ************************ */
     event DeactivateContract();
     event ActivateContract();
-    event IssuePosted(address publisher, string githubid, string githubUrl, uint256 solverRewardAmount, uint256 communityVoteReward);
+    event IssuePosted(
+        address publisher,
+        string githubid,
+        string githubUrl,
+        uint256 solverRewardAmount,
+        uint256 communityVoteReward
+    );
 
     //************************   Modifiers   ************************ */
     modifier onlyChainwhizAdmin() {
@@ -107,16 +113,16 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
         _;
     }
 
-
     //************************   Functions   ************************ */
-    fallback() external { }
+    fallback() external {}
+
     receive() external payable {}
-    
+
     /// @notice Used to initialise the admin
     /// @dev After deploying the contract, initialise is called immediately to set the admin
     /// @param _ChainwhizAdmin the admin address needs to be passed
 
-    function initialize(address _ChainwhizAdmin) external onlyActiveContract{
+    function initialize(address _ChainwhizAdmin) external onlyActiveContract {
         require(
             isInitialised == false,
             "ChainwhizCore Error: Contract is already initialised"
@@ -196,20 +202,41 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
     /// @param _endVoteTime Time at which voting will over
     /// @param _isCommunityReaward bool type to define if it involves community reward or not
     /// @return true if posted successfully or false
-    function postIssue(string memory _githubId, string memory _githubUrl,uint256 _solverRewardAmount, uint256 _communityVoterRewardAmount, uint256 _endSolverTime, uint256 _startVoteTime, uint256 _endVoteTime, bool _isCommunityReaward) public payable returns(bool) {
-       // If the github url is not registered with an address then, register it
-        if(publisher[_githubId]==address(0))
-        {
-            publisher[_githubId]=msg.sender;
+    function postIssue(
+        string memory _githubId,
+        string memory _githubUrl,
+        uint256 _solverRewardAmount,
+        uint256 _communityVoterRewardAmount,
+        uint256 _endSolverTime,
+        uint256 _startVoteTime,
+        uint256 _endVoteTime,
+        bool _isCommunityReaward
+    ) public payable returns (bool) {
+        // If the github url is not registered with an address then, register it
+        if (publisher[_githubId] == address(0)) {
+            publisher[_githubId] = msg.sender;
         }
         // To check if the github url linked with address is valid or not
-        require(publisher[_githubId] == msg.sender,"ChainwhizCore Error: The address linked github id is not the same");
+        require(
+            publisher[_githubId] == msg.sender,
+            "ChainwhizCore Error: The address linked github id is not the same"
+        );
         // Reward should be greater than min reward
-        require(_solverRewardAmount >= MIN_REWARD_AMOUNT,"ChainwhizCore Error: Reawrd amount cannot be less than MIN_REWARD_AMOUNT");
+        require(
+            _solverRewardAmount >= MIN_REWARD_AMOUNT,
+            "ChainwhizCore Error: Reawrd amount cannot be less than MIN_REWARD_AMOUNT"
+        );
         // Check user has enough balance
-        require((msg.sender).balance > (_solverRewardAmount+_communityVoterRewardAmount),"ChainwhizCore Error: User doesnt have enough balance");
+        require(
+            (msg.sender).balance >
+                (_solverRewardAmount + _communityVoterRewardAmount),
+            "ChainwhizCore Error: User doesnt have enough balance"
+        );
         // Check if the sent fund and the total amount set for rewards matches or not
-        require(msg.value >= (_solverRewardAmount+_communityVoterRewardAmount),"ChainwhizCore Error: User didnt transfer sufficient funds");
+        require(
+            msg.value >= (_solverRewardAmount + _communityVoterRewardAmount),
+            "ChainwhizCore Error: User didnt transfer sufficient funds"
+        );
         // Store issue related info
         Question storage question = issueDetail[msg.sender][_githubUrl];
         question.solverRewardAmount = _solverRewardAmount;
@@ -227,9 +254,14 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
         // console.log((issueDetail[msg.sender][_githubUrl]).startSolveTime);
         // console.log("Contract Balance");
         // console.log((address(this)).balance);
-        
-        emit IssuePosted(msg.sender, _githubId, _githubUrl, _solverRewardAmount, _communityVoterRewardAmount);
+
+        emit IssuePosted(
+            msg.sender,
+            _githubId,
+            _githubUrl,
+            _solverRewardAmount,
+            _communityVoterRewardAmount
+        );
         return true;
     }
-  
 }
