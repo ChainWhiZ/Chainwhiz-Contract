@@ -237,7 +237,42 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
             msg.value >= (_solverRewardAmount + _communityVoterRewardAmount),
             "ChainwhizCore Error: User didnt transfer sufficient funds"
         );
+
+
+        emit IssuePosted(
+            msg.sender,
+            _githubId,
+            _githubUrl,
+            _solverRewardAmount,
+            _communityVoterRewardAmount
+        );
+
         // Store issue related info
+        _postIssue(
+            _githubUrl,
+            _solverRewardAmount,
+            _communityVoterRewardAmount,
+            _endSolverTime,
+            _startVoteTime,
+            _endVoteTime,
+            _isCommunityReaward
+        );
+        return true;
+    }
+
+    /// @notice Post a bounty
+    /// @dev - Create the struct and store the details.
+    ///      - Trasnfer the token to the contract
+
+    function _postIssue(
+        string memory _githubUrl,
+        uint256 _solverRewardAmount,
+        uint256 _communityVoterRewardAmount,
+        uint256 _endSolverTime,
+        uint256 _startVoteTime,
+        uint256 _endVoteTime,
+        bool _isCommunityReaward
+    ) private {
         Question storage question = issueDetail[msg.sender][_githubUrl];
         question.solverRewardAmount = _solverRewardAmount;
         question.communityVoterRewardAmount = _communityVoterRewardAmount;
@@ -248,20 +283,11 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
         question.isCommunityVote = _isCommunityReaward;
         payable(address(this)).transfer(msg.value);
 
-        //****************************  Logs for testing only  ****************************************** */
+          //****************************  Logs for testing only  ****************************************** */
         // console.log((issueDetail[msg.sender][_githubUrl]).solverRewardAmount);
         // console.log((issueDetail[msg.sender][_githubUrl]).communityVoterRewardAmount);
         // console.log((issueDetail[msg.sender][_githubUrl]).startSolveTime);
         // console.log("Contract Balance");
         // console.log((address(this)).balance);
-
-        emit IssuePosted(
-            msg.sender,
-            _githubId,
-            _githubUrl,
-            _solverRewardAmount,
-            _communityVoterRewardAmount
-        );
-        return true;
     }
 }
