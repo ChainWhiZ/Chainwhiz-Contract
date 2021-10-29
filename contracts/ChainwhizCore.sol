@@ -312,7 +312,12 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
             solver[_githubId] = msg.sender;
         }
         // To prevent publisher from solving
-        require(publisher[_publisherGithubId]!=msg.sender && keccak256(abi.encodePacked((_publisherGithubId)))!= keccak256(abi.encodePacked((_githubId))),"ChainwhizCore Error in postSolution: Publisher cannot post solution");
+        require(
+            publisher[_publisherGithubId] != msg.sender &&
+                keccak256(abi.encodePacked((_publisherGithubId))) !=
+                keccak256(abi.encodePacked((_githubId))),
+            "ChainwhizCore Error in postSolution: Publisher cannot post solution"
+        );
         // To check if the github url linked with address is valid or not
 
         require(
@@ -320,13 +325,18 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
             "ChainwhizCore Error in postSolution: The address linked github id is not the same"
         );
         // Fetch issue related details. It's marked as memory as it saves gas fees
-        Question memory question = issueDetail[_publisherAddress][_issueGithubUrl];
+        Question memory question = issueDetail[_publisherAddress][
+            _issueGithubUrl
+        ];
         //Check if the solution exists or not
-        require(question.solverRewardAmount!=0, "ChainwhizCore Error in postSolution: The github issue doesnt exist");
+        require(
+            question.solverRewardAmount != 0,
+            "ChainwhizCore Error in postSolution: The github issue doesnt exist"
+        );
         // Check if the solver has posted within the solving time
         require(
             question.startSolveTime <= block.timestamp &&
-                question.endSolveTime >= block.timestamp && 
+                question.endSolveTime >= block.timestamp &&
                 question.questionStatus == QuestionStatus.Solve,
             "ChainwhizCore Error in postSolution: Solving time has not started or has completed"
         );
@@ -341,6 +351,5 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
         solution.solutionLink = _solutionLink;
         solution.timeOfPosting = block.timestamp;
         return true;
-
     }
 }
