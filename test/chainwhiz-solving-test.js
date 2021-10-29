@@ -19,8 +19,9 @@ describe("ChainwhizCore Solution Posting --> postIssue validations", function ()
 
     });
 
-    it("Should revert with error solving through diff adress", async function () {
-      await chainwhiz.connect(a1).postSolution("abc","www.facebook.com","www.google.com",a2.address,"efg");
+    it("Should show success message for submitting solution and revert with error solving through diff adress", async function () {
+      const successTrxObj = await chainwhiz.connect(a1).postSolution("abc","www.facebook.com","www.google.com",a2.address,"efg");
+      expect(successTrxObj).to.be.emit(chainwhiz,"SolutionSubmitted")
       const trxObj = chainwhiz.connect(a3).postSolution("abc","www.facebook.com","www.google.com",a2.address,"efg");
       expect(trxObj).to.be.revertedWith("ChainwhizCore Error in postSolution: The address linked github id is not the same")
     });
