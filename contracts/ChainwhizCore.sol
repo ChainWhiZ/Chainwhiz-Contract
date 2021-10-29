@@ -88,6 +88,13 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
         uint256 communityVoteReward
     );
 
+    event SolutionSubmitted(
+        string solverGithubId,
+        string solutionLink,
+        string  publisherGithubId,
+        string  issueGithubUrl
+    );
+
     //************************   Modifiers   ************************ */
     modifier onlyChainwhizAdmin() {
         require(
@@ -350,6 +357,7 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
         solution.solver = msg.sender;
         solution.solutionLink = _solutionLink;
         solution.timeOfPosting = block.timestamp;
+        emit SolutionSubmitted(_githubId,_solutionLink,_publisherGithubId,_issueGithubUrl);
         return true;
     }
 }
