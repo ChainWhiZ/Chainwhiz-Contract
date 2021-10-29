@@ -212,32 +212,31 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
         uint256 _endVoteTime,
         bool _isCommunityReaward
     ) public payable returns (bool) {
-        // If the github url is not registered with an address then, register it
+        // If the github id is not registered with an address then, register it
         if (publisher[_githubId] == address(0)) {
             publisher[_githubId] = msg.sender;
         }
         // To check if the github url linked with address is valid or not
         require(
             publisher[_githubId] == msg.sender,
-            "ChainwhizCore Error: The address linked github id is not the same"
+            "ChainwhizCore Error in postIssue: The address linked github id is not the same"
         );
         // Reward should be greater than min reward
         require(
             _solverRewardAmount >= MIN_REWARD_AMOUNT,
-            "ChainwhizCore Error: Reawrd amount cannot be less than MIN_REWARD_AMOUNT"
+            "ChainwhizCore Error in postIssue: Reawrd amount cannot be less than MIN_REWARD_AMOUNT"
         );
         // Check user has enough balance
         require(
             (msg.sender).balance >
                 (_solverRewardAmount + _communityVoterRewardAmount),
-            "ChainwhizCore Error: User doesnt have enough balance"
+            "ChainwhizCore Error in postIssue: User doesnt have enough balance"
         );
         // Check if the sent fund and the total amount set for rewards matches or not
         require(
             msg.value >= (_solverRewardAmount + _communityVoterRewardAmount),
-            "ChainwhizCore Error: User didnt transfer sufficient funds"
+            "ChainwhizCore Error in postIssue: User didnt transfer sufficient funds"
         );
-
 
         emit IssuePosted(
             msg.sender,
@@ -283,11 +282,65 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
         question.isCommunityVote = _isCommunityReaward;
         payable(address(this)).transfer(msg.value);
 
-          //****************************  Logs for testing only  ****************************************** */
+        //****************************  Logs for testing only  ****************************************** */
         // console.log((issueDetail[msg.sender][_githubUrl]).solverRewardAmount);
         // console.log((issueDetail[msg.sender][_githubUrl]).communityVoterRewardAmount);
         // console.log((issueDetail[msg.sender][_githubUrl]).startSolveTime);
         // console.log("Contract Balance");
         // console.log((address(this)).balance);
+    }
+
+    /// @notice To store the solution link
+    /// @dev Need issue url and publisher address to fetch issue related information
+    /// @param _solutionLink the solution link
+    /// @param _githubId the github id is of the solver
+    /// @param _publisherAddress address of publisher
+    /// @param _issueGithubUrl github issue url
+    /// @param _publisherGithubId github issue url
+    /// @return bool type true for success or failure
+    function postSolution(
+        string memory _githubId,
+        string memory _solutionLink,
+        string memory _issueGithubUrl,
+        address _publisherAddress,
+        string memory _publisherGithubId
+    ) public returns (bool) {
+        // Work around to get timestamp: 1635532684
+        // console.log(block.timestamp);
+        // If the github id is not registered with an address then, register it
+        if (solver[_githubId] == address(0)) {
+            solver[_githubId] = msg.sender;
+        }
+        // To prevent publisher from solving
+        require(publisher[_publisherGithubId]!=msg.sender && keccak256(abi.encodePacked((_publisherGithubId)))!= keccak256(abi.encodePacked((_githubId))),"ChainwhizCore Error in postSolution: Publisher cannot post solution");
+        // To check if the github url linked with address is valid or not
+
+        require(
+            solver[_githubId] == msg.sender,
+            "ChainwhizCore Error in postSolution: The address linked github id is not the same"
+        );
+        // Fetch issue related details. It's marked as memory as it saves gas fees
+        Question memory question = issueDetail[_publisherAddress][_issueGithubUrl];
+        //Check if the solution exists or not
+        require(question.solverRewardAmount!=0, "ChainwhizCore Error in postSolution: The github issue doesnt exist");
+        // Check if the solver has posted within the solving time
+        require(
+            question.startSolveTime <= block.timestamp &&
+                question.endSolveTime >= block.timestamp && 
+                question.questionStatus == QuestionStatus.Solve,
+            "ChainwhizCore Error in postSolution: Solving time has not started or has completed"
+        );
+        // Check if solver is posting multiple solutions
+        require(
+            solutionDetails[_issueGithubUrl][_githubId].solver != msg.sender,
+            "ChainwhizCore Error in postSolution: Solver can post only one solution"
+        );
+
+        Solution storage solution = solutionDetails[_issueGithubUrl][_githubId];
+        solution.solver = msg.sender;
+        solution.solutionLink = _solutionLink;
+        solution.timeOfPosting = block.timestamp;
+        return true;
+
     }
 }
