@@ -5,14 +5,22 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "hardhat/console.sol";
+import "./IWETHGateway.sol";
+import "./ILendingPoolAddressesProvider.sol";
 
 contract ChainwhizCore is Initializable, ReentrancyGuard {
     //************************   State Variables   ************************ */
     address public ChainwhizAdmin;
     uint256 public MIN_REWARD_AMOUNT = 5 ether;
+    uint256 public MAX_REWARD_AMOUNT = 40 ether;
     uint256 public MIN_STAKING_AMOUNT = 5 ether;
+    uint256 public MAX_STAKE_AMOUNT = 40 ether;
+    uint256 public MAI_COMMUNITY_REWARD_AMOUNT = 10 ether;
+    uint256 public MAX_COMMUNITY_REWARD_AMOUNT = 40 ether;
     bool public isInitialised = false;
     bool public isContractActive = true;
+    address public ethGateWayAddress;
+    address public lendingPoolProviderAddress;
 
     //************************   Enums   ************************ */
     enum QuestionStatus {
@@ -31,6 +39,7 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
 
     //************************   Structures   ************************ */
     struct Question {
+        address publisher;
         uint256 solverRewardAmount;
         uint256 communityVoterRewardAmount;
         uint256 startSolveTime;
@@ -38,6 +47,7 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
         uint256 startVoteTime;
         uint256 endVoteTime;
         bool isCommunityVote;
+        address[] voterAddress;
         QuestionStatus questionStatus;
     }
 
@@ -80,6 +90,8 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
     //************************   Events   ************************ */
     event DeactivateContract();
     event ActivateContract();
+    event ETHGateWayAddressChanged(address newAddress);
+    event LendingPoolProviderAddressChanged(address newAddress);
     event IssuePosted(
         address publisher,
         string githubid,
@@ -91,32 +103,32 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
     event SolutionSubmitted(
         string solverGithubId,
         string solutionLink,
-        string  publisherGithubId,
-        string  issueGithubUrl
+        string publisherGithubId,
+        string issueGithubUrl
+    );
+
+    event VoteStaked(
+        string solutionLink,
+        address voter,
+        uint amount
     );
 
     //************************   Modifiers   ************************ */
     modifier onlyChainwhizAdmin() {
-        require(
-            msg.sender == ChainwhizAdmin,
-            "ChainwhizCore Error: Only Admin can do it"
-        );
+        require(msg.sender == ChainwhizAdmin, "Only Admin can do it");
         _;
     }
 
     modifier onlyActiveContract() {
         require(
             isContractActive == true,
-            "ChainwhizCore Error: Contract is at halt for some reason"
+            "Contract is at halt for some reason"
         );
         _;
     }
 
     modifier onlyDeactiveContract() {
-        require(
-            isContractActive == false,
-            "ChainwhizCore Error: Contract is active"
-        );
+        require(isContractActive == false, "Contract is active");
         _;
     }
 
@@ -130,10 +142,7 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
     /// @param _ChainwhizAdmin the admin address needs to be passed
 
     function initialize(address _ChainwhizAdmin) external onlyActiveContract {
-        require(
-            isInitialised == false,
-            "ChainwhizCore Error: Contract is already initialised"
-        );
+        require(isInitialised == false, "Contract is already initialised");
         ChainwhizAdmin = _ChainwhizAdmin;
         isInitialised = true;
     }
@@ -198,6 +207,26 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
         emit ActivateContract();
     }
 
+    /// @notice Set the address of ETHGateway Contract of Aave
+    function setETHGatewayAddress(address _ethGateWayAddress)
+        external
+        onlyChainwhizAdmin
+        onlyActiveContract
+    {
+        ethGateWayAddress = _ethGateWayAddress;
+        emit ETHGateWayAddressChanged(_ethGateWayAddress);
+    }
+
+    /// @notice Set the address of LendingPoolAddressesProvider Contract of Aave
+    function setLendingPoolProviderAddress(address _lendingPoolProviderAddress)
+        external
+        onlyChainwhizAdmin
+        onlyActiveContract
+    {
+        lendingPoolProviderAddress = _lendingPoolProviderAddress;
+        emit LendingPoolProviderAddressChanged(_lendingPoolProviderAddress);
+    }
+
     /// @notice Post a bounty
     /// @dev The require check are there for various validations
     /// @param _githubId the github id
@@ -226,23 +255,23 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
         // To check if the github url linked with address is valid or not
         require(
             publisher[_githubId] == msg.sender,
-            "ChainwhizCore Error in postIssue: The address linked github id is not the same"
+            "Error in postIssue: The address linked github id is not the same"
         );
         // Reward should be greater than min reward
         require(
             _solverRewardAmount >= MIN_REWARD_AMOUNT,
-            "ChainwhizCore Error in postIssue: Reawrd amount cannot be less than MIN_REWARD_AMOUNT"
+            "Error in postIssue: Reawrd amount cannot be less than MIN_REWARD_AMOUNT"
         );
         // Check user has enough balance
         require(
             (msg.sender).balance >
                 (_solverRewardAmount + _communityVoterRewardAmount),
-            "ChainwhizCore Error in postIssue: User doesnt have enough balance"
+            "Error in postIssue: User doesnt have enough balance"
         );
         // Check if the sent fund and the total amount set for rewards matches or not
         require(
             msg.value >= (_solverRewardAmount + _communityVoterRewardAmount),
-            "ChainwhizCore Error in postIssue: User didnt transfer sufficient funds"
+            "Error in postIssue: User didnt transfer sufficient funds"
         );
 
         emit IssuePosted(
@@ -255,6 +284,7 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
 
         // Store issue related info
         _postIssue(
+            msg.sender,
             _githubUrl,
             _solverRewardAmount,
             _communityVoterRewardAmount,
@@ -271,6 +301,7 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
     ///      - Trasnfer the token to the contract
 
     function _postIssue(
+        address _publisher,
         string memory _githubUrl,
         uint256 _solverRewardAmount,
         uint256 _communityVoterRewardAmount,
@@ -280,6 +311,7 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
         bool _isCommunityReaward
     ) private {
         Question storage question = issueDetail[msg.sender][_githubUrl];
+        question.publisher = _publisher;
         question.solverRewardAmount = _solverRewardAmount;
         question.communityVoterRewardAmount = _communityVoterRewardAmount;
         question.startSolveTime = block.timestamp;
@@ -321,15 +353,16 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
         // To prevent publisher from solving
         require(
             publisher[_publisherGithubId] != msg.sender &&
+                solver[_githubId] != _publisherAddress &&
                 keccak256(abi.encodePacked((_publisherGithubId))) !=
                 keccak256(abi.encodePacked((_githubId))),
-            "ChainwhizCore Error in postSolution: Publisher cannot post solution"
+            "Error in postSolution: Publisher cannot post solution"
         );
         // To check if the github url linked with address is valid or not
 
         require(
             solver[_githubId] == msg.sender,
-            "ChainwhizCore Error in postSolution: The address linked github id is not the same"
+            "Error in postSolution: The address linked github id is not the same"
         );
         // Fetch issue related details. It's marked as memory as it saves gas fees
         Question memory question = issueDetail[_publisherAddress][
@@ -338,26 +371,230 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
         //Check if the solution exists or not
         require(
             question.solverRewardAmount != 0,
-            "ChainwhizCore Error in postSolution: The github issue doesnt exist"
+            "Error in postSolution: The github issue doesnt exist"
         );
         // Check if the solver has posted within the solving time
         require(
             question.startSolveTime <= block.timestamp &&
                 question.endSolveTime >= block.timestamp &&
                 question.questionStatus == QuestionStatus.Solve,
-            "ChainwhizCore Error in postSolution: Solving time has not started or has completed"
+            "Error in postSolution: Solving time has not started or has completed"
         );
         // Check if solver is posting multiple solutions
         require(
             solutionDetails[_issueGithubUrl][_githubId].solver != msg.sender,
-            "ChainwhizCore Error in postSolution: Solver can post only one solution"
+            "Error in postSolution: Solver can post only one solution"
         );
 
         Solution storage solution = solutionDetails[_issueGithubUrl][_githubId];
         solution.solver = msg.sender;
         solution.solutionLink = _solutionLink;
         solution.timeOfPosting = block.timestamp;
-        emit SolutionSubmitted(_githubId,_solutionLink,_publisherGithubId,_issueGithubUrl);
+        emit SolutionSubmitted(
+            _githubId,
+            _solutionLink,
+            _publisherGithubId,
+            _issueGithubUrl
+        );
         return true;
+    }
+
+    /// @notice Start the voting phase
+    /// @param _issueGithubUrl a parameter just like in doxygen (must be followed by parameter name)
+    /// @param _publisherGithubId a parameter just like in doxygen (must be followed by parameter name)
+    /// @param _publisherAddress a parameter just like in doxygen (must be followed by parameter name)
+    function startVotingStage(
+        string memory _issueGithubUrl,
+        string memory _publisherGithubId,
+        address _publisherAddress
+    ) public {
+        //work around to get the timestamp for testing
+        // console.log(block.timestamp);
+        //get issue detail
+        Question storage questionDetail = issueDetail[_publisherAddress][
+            _issueGithubUrl
+        ];
+        //Only with community vote enabled can be moves to voting phase
+        require(
+            questionDetail.isCommunityVote &&
+                questionDetail.startVoteTime <= block.timestamp &&
+                questionDetail.endVoteTime >= block.timestamp,
+            "Error in startVotingStage: Community vote is disabled or initiated beyond the voting phase"
+        );
+        //Only chainwhiz admin or issue publihser can initiate it
+        require(
+            ChainwhizAdmin == msg.sender ||
+                (publisher[_publisherGithubId] == msg.sender &&
+                    msg.sender == _publisherAddress),
+            "Error in startVotingStage: Only admin or issue poster can initiate"
+        );
+
+        questionDetail.questionStatus = QuestionStatus.Vote;
+    }
+
+    /// @notice Vote on the solution by staking Matic
+    /// @dev Explain to a developer any extra details
+    /// @param _issueGithubUrl The issue github url
+    /// @param _publisherAddress Publisher address
+    /// @param _publisherGithubId publisher github id
+    /// @param _solverGithubId solver github id
+    /// @param _solver solver address
+    /// @param _solutionLink the solution link to be voted on
+    /// @param _stakeAmount amount to be staked
+    /// @param _githubId the voter github id
+    function stakeVote(
+        string memory _issueGithubUrl,
+        address _publisherAddress,
+        string memory _publisherGithubId,
+        string memory _solverGithubId,
+        address _solver,
+        string memory _solutionLink,
+        uint256 _stakeAmount,
+        string memory _githubId
+    ) external {
+        // If the github is not registered as voter, it registers it
+        if (voter[_githubId] == address(0)) {
+            voter[_githubId] = msg.sender;
+        }
+        // To check if th github url is linked with the address is valid or not
+        require(
+            voter[_githubId] == msg.sender,
+            "Error in stakeVote: The address linked github id is not the same"
+        );
+        console.log(1);
+        //To check issue exists
+        Question memory  question = issueDetail[_publisherAddress][_issueGithubUrl];
+        require(
+            publisher[_publisherGithubId] == _publisherAddress &&
+                issueDetail[_publisherAddress][_issueGithubUrl]
+                    .solverRewardAmount !=
+                0 &&
+                issueDetail[_publisherAddress][_issueGithubUrl].isCommunityVote,
+            "Error in stakeVote: Issue doesnt exist or has no community vote"
+        );
+        console.log(2);
+        //Check that the solution exists
+        Solution memory solution = solutionDetails[_issueGithubUrl][
+            _solverGithubId
+        ];
+        require(
+            solver[_solverGithubId] == _solver &&
+                solution.solver != address(0) &&
+                keccak256(abi.encodePacked(solution.solutionLink)) !=
+                keccak256(abi.encodePacked("")) &&
+                keccak256(abi.encodePacked(solution.solutionLink)) ==
+                keccak256(abi.encodePacked(_solutionLink)),
+            "Error in stakeVote: Invalid soluton details"
+        );
+        console.log(3);
+        //Check if the staking is done within the time
+        require(
+            issueDetail[_publisherAddress][_issueGithubUrl].questionStatus ==
+                QuestionStatus.Vote &&
+                issueDetail[_publisherAddress][_issueGithubUrl].startVoteTime <=
+                block.timestamp &&
+                issueDetail[_publisherAddress][_issueGithubUrl].endVoteTime >=
+                block.timestamp,
+            "Error in stakeVote: Voting hasnt started"
+        );
+        console.log(4);
+        // To check github id of solver and publisher doesnt match with the voter
+        require(
+            publisher[_githubId] != msg.sender &&
+                solver[_githubId] != msg.sender &&
+                solution.solver != msg.sender &&
+                question.publisher != msg.sender &&
+                keccak256(abi.encodePacked((_publisherGithubId))) !=
+                keccak256(abi.encodePacked((_githubId))) &&
+                keccak256(abi.encodePacked((_solverGithubId))) !=
+                keccak256(abi.encodePacked((_githubId))),
+            "Error in stakeVote: Publisher or solver cant vote"
+        );
+        console.log(5);
+        // To check is stake amount is within the limit
+        require(
+            _stakeAmount >= MIN_STAKING_AMOUNT &&
+                _stakeAmount <= MAX_STAKE_AMOUNT,
+            "Error in stakeVote: Stake amount isn't within the range"
+        );
+        console.log(6);
+        //Voter shouldnt vote multiple times
+        require(
+            voteDetails[_solutionLink][msg.sender].voter == address(0),
+            "Error in stakeVote: Voter already staked"
+        );
+        console.log(7);
+        //Check if voter has alreay voted in any solution
+        bool voterVoted = _checkAlreadyVoted(
+            issueDetail[_publisherAddress][_issueGithubUrl].voterAddress,
+            msg.sender
+        );
+        require(
+            !voterVoted,
+            "Error in stakeVote: Voter already voted in a solution"
+        );
+        console.log(8);
+        // lend to aave protocol
+        _lendToAave(_stakeAmount);
+        //store vote detail
+        console.log(9);
+        _storeVoteDetail(
+            _solutionLink,
+            msg.sender,
+            _stakeAmount,
+            _publisherAddress,
+            _issueGithubUrl
+        );
+        console.log(10);
+        //emit the event
+        emit VoteStaked(_solutionLink, msg.sender, _stakeAmount);
+    }
+
+    function _checkAlreadyVoted(address[] memory _voterAddress, address _voter)
+        private
+        pure
+        returns (bool)
+    {
+        uint256 lengthOfArr = _voterAddress.length;
+        for (uint256 i = 0; i < lengthOfArr; i++) {
+            if (_voter == _voterAddress[i]) return true;
+        }
+
+        return false;
+    }
+
+    function _lendToAave(uint256 _amount) private {
+        // Initialise the ETHGateway Contract
+        IWETHGateway ethGateWay = IWETHGateway(ethGateWayAddress);
+        // Initialise the LendingPoolAddressesProvider Contract
+        ILendingPoolAddressesProvider lendingProvider = ILendingPoolAddressesProvider(
+                lendingPoolProviderAddress
+            );
+        // Lend the matic tokens to the Aave Protocol.
+        ethGateWay.depositETH{value: _amount}(
+            // Address of Lending Pool
+            lendingProvider.getLendingPool(),
+            // The address that would receive the aToken, in this case the contract
+            address(this),
+            // Referal Code: For now its 0
+            0
+        );
+    }
+
+    function _storeVoteDetail(
+        string memory _solutionLink,
+        address _voter,
+        uint256 _stakeAmount,
+        address _publisherAddress,
+        string memory _issueGithubUrl
+    ) private {
+        Vote storage vote = voteDetails[_solutionLink][_voter];
+        vote.voter = _voter;
+        vote.amountStaked = _stakeAmount;
+
+        Question storage question = issueDetail[_publisherAddress][
+            _issueGithubUrl
+        ];
+        question.voterAddress.push(_voter);
     }
 }
