@@ -69,15 +69,15 @@ describe("ChainwhizCore Voting Stage --> stakeVote", function () {
 
   it("Should revert with error for publisher trying to vote", async function () {
     await chainwhiz.connect(owner).startVotingStage("www.google.com", "efg", a2.address);
-    const trxObj = chainwhiz.connect(a2).stakeVote("www.google.com", a2.address, "efg", "abc", a1.address, "www.facebook.com", tokensBN(12), "xyz");
+    const trxObj =  chainwhiz.connect(a2).stakeVote("www.google.com", a2.address, "efg", "abc", a1.address, "www.facebook.com", tokensBN(12), "xyz");
     expect(trxObj).to.be.revertedWith("Error in stakeVote: Publisher or solver cant vote")
   })
 
-  it("Should stake successfully", async function (done) {
+  it("Should revert with error for staking multiple times", async function () {
     await chainwhiz.connect(owner).startVotingStage("www.google.com", "efg", a2.address);
-    expect(await chainwhiz.connect(a3).stakeVote("www.google.com", a2.address, "efg", "abc", a1.address, "www.facebook.com", tokensBN(12), "xyz")).to.be.emit(chainwhiz,"VoteStaked");
-    // expect(trxObj).to.be.revertedWith("Error in stakeVote: Publisher or solver cant vote")
+     chainwhiz.connect(a3).stakeVote("www.google.com", a2.address, "efg", "abc", a1.address, "www.facebook.com", tokensBN(12), "xyz")
+    expect(await chainwhiz.connect(a3).stakeVote("www.google.com", a2.address, "efg", "abc", a1.address, "www.facebook.com", tokensBN(12), "xyz")).to.be.revertedWith("Error in stakeVote: Voter already staked")
     // trxObj.to.be.emit(chainwhiz,"VoteStaked")
-  }).timeout(500000);
+  }).timeout(200000);
 
 })
