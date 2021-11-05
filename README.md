@@ -40,3 +40,7 @@ Then, copy the deployment address and paste it in to replace `DEPLOYED_CONTRACT_
 ```shell
 npx hardhat verify --network ropsten DEPLOYED_CONTRACT_ADDRESS "Hello, Hardhat!"
 ```
+# Aave Lending Pool in Polygon
+
+Contract to be used : WETHGateway Contract
+Functions to be used : `depositETH()` and `withdrawETH()`
