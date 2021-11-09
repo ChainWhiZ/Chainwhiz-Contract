@@ -15,7 +15,7 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
     uint256 public MAX_REWARD_AMOUNT = 400 ether;
     uint256 public MIN_STAKING_AMOUNT = 5 ether;
     uint256 public MAX_STAKE_AMOUNT = 40 ether;
-    uint256 public MAI_COMMUNITY_REWARD_AMOUNT = 10 ether;
+    uint256 public MIN_COMMUNITY_REWARD_AMOUNT = 10 ether;
     uint256 public MAX_COMMUNITY_REWARD_AMOUNT = 40 ether;
     bool public isInitialised = false;
     bool public isContractActive = true;
@@ -52,6 +52,7 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
         string[] solutionLinks;
         QuestionStatus questionStatus;
         bool isUnstakeSet;
+        Solution choosenSolution;
     }
 
     struct Solution {
@@ -116,6 +117,20 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
     event UnstakeAmountSet(address publisher, string issueLink);
 
     event VoterUnstaked(string solutionLink);
+
+    event EscorwInitiated(
+        address publisher,
+        address solver,
+        string issueLink,
+        string solutionLink
+    );
+
+    event EscrowTransferOwnership(
+        address publisher,
+        address solver,
+        string issueLink,
+        string solutionLink
+    );
 
     //************************   Modifiers   ************************ */
     modifier onlyChainwhizAdmin() {
@@ -240,7 +255,6 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
     /// @param _endSolverTime Time at which solving will be over
     /// @param _startVoteTime Time at which voting will start
     /// @param _endVoteTime Time at which voting will over
-    /// @param _isCommunityReaward bool type to define if it involves community reward or not
     /// @return true if posted successfully or false
     function postIssue(
         string memory _githubId,
@@ -249,8 +263,7 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
         uint256 _communityVoterRewardAmount,
         uint256 _endSolverTime,
         uint256 _startVoteTime,
-        uint256 _endVoteTime,
-        bool _isCommunityReaward
+        uint256 _endVoteTime
     ) public payable returns (bool) {
         // If the github id is not registered with an address then, register it
         if (publisher[_githubId] == address(0)) {
@@ -285,6 +298,11 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
             _solverRewardAmount,
             _communityVoterRewardAmount
         );
+        bool _isCommunityReaward = false;
+        if (
+            _communityVoterRewardAmount >= MIN_COMMUNITY_REWARD_AMOUNT &&
+            _communityVoterRewardAmount <= MAX_COMMUNITY_REWARD_AMOUNT
+        ) _isCommunityReaward = true;
 
         // Store issue related info
         _postIssue(
@@ -655,5 +673,132 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
             _amount,
             msg.sender
         );
+    }
+
+    /// @notice Publisher (in case of disperancy Chainwhiz Admin) can initiate the escrow
+    /// @param _publisher a parameter just like in doxygen (must be followed by parameter name)
+    /// @param _issueLink a parameter just like in doxygen (must be followed by parameter name)
+    /// @param _solverGithubId a parameter just like in doxygen (must be followed by parameter name)
+    function initiateEscrow(
+        address _publisher,
+        string memory _issueLink,
+        string memory _solverGithubId
+    ) external {
+        //get question details
+        Question storage question = issueDetail[_publisher][_issueLink];
+        console.log(question.isCommunityVote);
+        //get solution details
+        Solution storage solution = solutionDetails[_issueLink][
+            _solverGithubId
+        ];
+        //only publisher or admin(in case of disperancy) can initiate the escrow
+        require(
+            question.publisher == msg.sender || ChainwhizAdmin == msg.sender,
+            "Error in initiateEscrow: Unautorized"
+        );
+        //check if solution is legitimate
+        require(
+            keccak256(abi.encodePacked(solution.solutionLink)) !=
+                keccak256(abi.encodePacked("")) &&
+                solution.solver != address(0),
+            "Error in initiateEscrow:invalid solution"
+        );
+        //1st condition for issue without vote and 2nd for with vote
+        require(
+            (question.endSolveTime <= block.timestamp &&
+                question.questionStatus == QuestionStatus.Solve) ||
+                (question.isCommunityVote &&
+                    question.endVoteTime <= block.timestamp &&
+                    question.questionStatus == QuestionStatus.Vote),
+            "Error in initiateEscrow: Voting/Solving hasnt finished"
+        );
+        //check for the state too
+        require(
+            question.questionStatus == QuestionStatus.Solve ||
+                question.questionStatus == QuestionStatus.Vote,
+            "Error in initiateEscrow:Voting/Solve is going on"
+        );
+        // finally update the status
+        question.questionStatus = QuestionStatus.Escrow;
+        solution.escrowStatus = EscrowStatus.Initiate;
+        question.choosenSolution = solution;
+        emit EscorwInitiated(
+            question.publisher,
+            solution.solver,
+            _issueLink,
+            solution.solutionLink
+        );
+    }
+
+    /// @notice Transfer the ownership of github repo to publisher
+    /// @dev We checked for if the solution is legitimate or not in first step so we can skop it here
+    /// @param _publisher a parameter just like in doxygen (must be followed by parameter name)
+    /// @param _issueLink a parameter just like in doxygen (must be followed by parameter name)
+    function transferOwnership(address _publisher, string memory _issueLink)
+        external
+    {
+        //get question details
+        Question memory question = issueDetail[_publisher][_issueLink];
+        //only solver or admin(in case of disperancy) can initiate the escrow
+        require(
+            question.choosenSolution.solver == msg.sender ||
+                ChainwhizAdmin == msg.sender,
+            "Error in transferOwnership: Unauthorized"
+        );
+        //check for the escrow and question status
+        require(
+            question.questionStatus == QuestionStatus.Escrow &&
+                question.choosenSolution.escrowStatus == EscrowStatus.Initiate,
+            "Error in transferOwnership: Not at right state"
+        );
+        // update the state
+        question.choosenSolution.escrowStatus = EscrowStatus.TransferOwnership;
+        emit EscrowTransferOwnership(
+            question.publisher,
+            question.choosenSolution.solver,
+            _issueLink,
+            question.choosenSolution.solutionLink
+        );
+    }
+
+    /// @notice Transfer the ownership of github repo to publisher
+    /// @param _publisher a parameter just like in doxygen (must be followed by parameter name)
+    /// @param _issueLink a parameter just like in doxygen (must be followed by parameter name)
+    function transferRewardAmount(address _publisher, string memory _issueLink)
+        external
+        payable
+    {
+        //get question details
+        Question memory question = issueDetail[_publisher][_issueLink];
+        //only solver or admin(in case of disperancy) can initiate the escrow
+        require(
+            question.publisher == msg.sender || ChainwhizAdmin == msg.sender,
+            "Error in transferRewardAmount: Unauthorized"
+        );
+        //check for the escrow and question status
+        require(
+            question.questionStatus == QuestionStatus.Escrow &&
+                question.choosenSolution.escrowStatus ==
+                EscrowStatus.TransferOwnership,
+            "Error in transferRewardAmount: Not at right state"
+        );
+        // update the state
+        question.choosenSolution.escrowStatus = EscrowStatus.TransferMoney;
+        _transferFunds(
+            payable(question.choosenSolution.solver),
+            question.solverRewardAmount
+        );
+        emit EscrowTransferOwnership(
+            question.publisher,
+            question.choosenSolution.solver,
+            _issueLink,
+            question.choosenSolution.solutionLink
+        );
+    }
+
+    function _transferFunds(address payable _solver, uint256 _rewardAmount)
+        private
+    {
+        _solver.transfer(_rewardAmount);
     }
 }
