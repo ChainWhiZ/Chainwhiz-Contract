@@ -25,6 +25,7 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
     address public lendingPoolProviderAddress;
     address public aaveIncentiveAddress;
     uint256 public ChainwhizTreasary;
+    address public aMaticAddress;
     address[] public rewardAddress;
 
     //************************   Enums   ************************ */
@@ -266,6 +267,15 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
         onlyActiveContract
     {
         rewardAddress.push(_rewardAddress);
+    }
+
+    /// @notice Set the address of aMatic Address of Aave
+    function setaMaticAddress(address _aMaticAddress)
+        external
+        onlyChainwhizAdmin
+        onlyActiveContract
+    {
+        aMaticAddress = _aMaticAddress;
     }
 
     /// @notice Post a bounty
@@ -842,5 +852,9 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
         );
         require(_to != address(0));
         _withdrawFromAave(_amount, _to);
+    }
+
+    function setApproval(uint256 _approvalAmount) public {
+        IERC20(aMaticAddress).approve(ethGateWayAddress, _approvalAmount);
     }
 }
