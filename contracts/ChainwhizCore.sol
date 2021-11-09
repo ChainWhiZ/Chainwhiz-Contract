@@ -7,6 +7,8 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "hardhat/console.sol";
 import "./IWETHGateway.sol";
 import "./ILendingPoolAddressesProvider.sol";
+import "./IERC20.sol";
+import "./IAaveIncentivesController.sol";
 
 contract ChainwhizCore is Initializable, ReentrancyGuard {
     //************************   State Variables   ************************ */
@@ -21,7 +23,10 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
     bool public isContractActive = true;
     address public ethGateWayAddress;
     address public lendingPoolProviderAddress;
+    address public aaveIncentiveAddress;
     uint256 public ChainwhizTreasary;
+    address public aMaticAddress;
+    address[] public rewardAddress;
 
     //************************   Enums   ************************ */
     enum QuestionStatus {
@@ -244,6 +249,33 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
     {
         lendingPoolProviderAddress = _lendingPoolProviderAddress;
         emit LendingPoolProviderAddressChanged(_lendingPoolProviderAddress);
+    }
+
+    /// @notice Set the address of AaveIncentiveAddress Contract of Aave
+    function setAaveIncentiveAddress(address _aaveIncentiveAddress)
+        external
+        onlyChainwhizAdmin
+        onlyActiveContract
+    {
+        aaveIncentiveAddress = _aaveIncentiveAddress;
+    }
+
+    /// @notice Set the address of Reward Contract of Aave
+    function setReawrdArrayAddress(address _rewardAddress)
+        external
+        onlyChainwhizAdmin
+        onlyActiveContract
+    {
+        rewardAddress.push(_rewardAddress);
+    }
+
+    /// @notice Set the address of aMatic Address of Aave
+    function setaMaticAddress(address _aMaticAddress)
+        external
+        onlyChainwhizAdmin
+        onlyActiveContract
+    {
+        aMaticAddress = _aMaticAddress;
     }
 
     /// @notice Post a bounty
@@ -655,12 +687,12 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
     //For each voter to claim their staked amount(either slashed or with reward)
     function unstake(string memory _solutionLink) external {
         Vote storage vote = voteDetails[_solutionLink][msg.sender];
-        _withdrawFromAave(vote.returnAmount);
+        _withdrawFromAave(vote.returnAmount, msg.sender);
         vote.isUnstake = true;
         emit VoterUnstaked(_solutionLink);
     }
 
-    function _withdrawFromAave(uint256 _amount) private {
+    function _withdrawFromAave(uint256 _amount, address _to) private {
         // Initialise the ETHGateway Contract
         IWETHGateway ethGateWay = IWETHGateway(ethGateWayAddress);
         // Initialise the LendingPoolAddressesProvider Contract
@@ -668,11 +700,7 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
                 lendingPoolProviderAddress
             );
         // Withdraw the matic tokens from the Aave Protocol.
-        ethGateWay.withdrawETH(
-            lendingProvider.getLendingPool(),
-            _amount,
-            msg.sender
-        );
+        ethGateWay.withdrawETH(lendingProvider.getLendingPool(), _amount, _to);
     }
 
     /// @notice Publisher (in case of disperancy Chainwhiz Admin) can initiate the escrow
@@ -800,5 +828,33 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
         private
     {
         _solver.transfer(_rewardAmount);
+    }
+
+    function claimInterest(address _claimer) external onlyChainwhizAdmin {
+        IAaveIncentivesController incentive = IAaveIncentivesController(
+            aaveIncentiveAddress
+        );
+        uint256 claimAmount = incentive.getRewardsBalance(
+            rewardAddress,
+            address(this)
+        );
+        incentive.claimRewards(rewardAddress, claimAmount, _claimer);
+    }
+
+    function withdrawFromTrasery(uint256 _amount, address _to)
+        external
+        onlyChainwhizAdmin
+    {
+        //check if the amount is less than the amount in treasery
+        require(
+            _amount <= ChainwhizTreasary,
+            "Error in withdrawFromTrasery: Invalid amount"
+        );
+        require(_to != address(0));
+        _withdrawFromAave(_amount, _to);
+    }
+
+    function setApproval(uint256 _approvalAmount) public {
+        IERC20(aMaticAddress).approve(ethGateWayAddress, _approvalAmount);
     }
 }
