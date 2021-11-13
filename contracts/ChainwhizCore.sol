@@ -10,7 +10,7 @@ import "./ILendingPoolAddressesProvider.sol";
 import "./IERC20.sol";
 import "./IAaveIncentivesController.sol";
 
-contract ChainwhizCore is Initializable, ReentrancyGuard {
+contract ChainwhizCore is  ReentrancyGuard {
     //************************   State Variables   ************************ */
     address public ChainwhizAdmin;
     uint256 public MIN_REWARD_AMOUNT = 5 ether;
