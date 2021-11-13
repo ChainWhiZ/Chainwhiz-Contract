@@ -38,9 +38,7 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
 
     enum EscrowStatus {
         Initiate,
-        TransferOwnership,
-        TransferMoney,
-        Emergency
+        Complete
     }
 
     //************************   Structures   ************************ */
@@ -704,16 +702,14 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
     }
 
     /// @notice Publisher (in case of disperancy Chainwhiz Admin) can initiate the escrow
-    /// @param _publisher a parameter just like in doxygen (must be followed by parameter name)
     /// @param _issueLink a parameter just like in doxygen (must be followed by parameter name)
     /// @param _solverGithubId a parameter just like in doxygen (must be followed by parameter name)
     function initiateEscrow(
-        address _publisher,
         string memory _issueLink,
         string memory _solverGithubId
     ) external {
         //get question details
-        Question storage question = issueDetail[_publisher][_issueLink];
+        Question storage question = issueDetail[msg.sender][_issueLink];
         console.log(question.isCommunityVote);
         //get solution details
         Solution storage solution = solutionDetails[_issueLink][
@@ -758,11 +754,11 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
         );
     }
 
-    /// @notice Transfer the ownership of github repo to publisher
-    /// @dev We checked for if the solution is legitimate or not in first step so we can skop it here
-    /// @param _publisher a parameter just like in doxygen (must be followed by parameter name)
-    /// @param _issueLink a parameter just like in doxygen (must be followed by parameter name)
-    function transferOwnership(address _publisher, string memory _issueLink)
+    // @notice Transfer the ownership of github repo to publisher
+    // @dev We checked for if the solution is legitimate or not in first step so we can skop it here
+    // @param _publisher a parameter just like in doxygen (must be followed by parameter name)
+    // @param _issueLink a parameter just like in doxygen (must be followed by parameter name)
+    function transferRewardAmount(address _publisher, string memory _issueLink)
         external
     {
         //get question details
@@ -780,7 +776,7 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
             "Error in transferOwnership: Not at right state"
         );
         // update the state
-        question.choosenSolution.escrowStatus = EscrowStatus.TransferOwnership;
+        question.choosenSolution.escrowStatus = EscrowStatus.Complete;
         emit EscrowTransferOwnership(
             question.publisher,
             question.choosenSolution.solver,
@@ -789,40 +785,40 @@ contract ChainwhizCore is Initializable, ReentrancyGuard {
         );
     }
 
-    /// @notice Transfer the ownership of github repo to publisher
-    /// @param _publisher a parameter just like in doxygen (must be followed by parameter name)
-    /// @param _issueLink a parameter just like in doxygen (must be followed by parameter name)
-    function transferRewardAmount(address _publisher, string memory _issueLink)
-        external
-        payable
-    {
-        //get question details
-        Question memory question = issueDetail[_publisher][_issueLink];
-        //only solver or admin(in case of disperancy) can initiate the escrow
-        require(
-            question.publisher == msg.sender || ChainwhizAdmin == msg.sender,
-            "Error in transferRewardAmount: Unauthorized"
-        );
-        //check for the escrow and question status
-        require(
-            question.questionStatus == QuestionStatus.Escrow &&
-                question.choosenSolution.escrowStatus ==
-                EscrowStatus.TransferOwnership,
-            "Error in transferRewardAmount: Not at right state"
-        );
-        // update the state
-        question.choosenSolution.escrowStatus = EscrowStatus.TransferMoney;
-        _transferFunds(
-            payable(question.choosenSolution.solver),
-            question.solverRewardAmount
-        );
-        emit EscrowTransferOwnership(
-            question.publisher,
-            question.choosenSolution.solver,
-            _issueLink,
-            question.choosenSolution.solutionLink
-        );
-    }
+    // /// @notice Transfer the ownership of github repo to publisher
+    // /// @param _publisher a parameter just like in doxygen (must be followed by parameter name)
+    // /// @param _issueLink a parameter just like in doxygen (must be followed by parameter name)
+    // function transferRewardAmount(address _publisher, string memory _issueLink)
+    //     external
+    //     payable
+    // {
+    //     //get question details
+    //     Question memory question = issueDetail[_publisher][_issueLink];
+    //     //only solver or admin(in case of disperancy) can initiate the escrow
+    //     require(
+    //         question.publisher == msg.sender || ChainwhizAdmin == msg.sender,
+    //         "Error in transferRewardAmount: Unauthorized"
+    //     );
+    //     //check for the escrow and question status
+    //     require(
+    //         question.questionStatus == QuestionStatus.Escrow &&
+    //             question.choosenSolution.escrowStatus ==
+    //             EscrowStatus.Initiate,
+    //         "Error in transferRewardAmount: Not at right state"
+    //     );
+    //     // update the state
+    //     question.choosenSolution.escrowStatus = EscrowStatus.Complete;
+    //     _transferFunds(
+    //         payable(question.choosenSolution.solver),
+    //         question.solverRewardAmount
+    //     );
+    //     emit EscrowTransferOwnership(
+    //         question.publisher,
+    //         question.choosenSolution.solver,
+    //         _issueLink,
+    //         question.choosenSolution.solutionLink
+    //     );
+    // }
 
     function _transferFunds(address payable _solver, uint256 _rewardAmount)
         private
