@@ -1,7 +1,7 @@
  Sūrya's Description Report
 
  Flow Diagram
- [Graph][chainwhiz.png]
+ [Graph](https://github.com/ChainWhiZ/Chainwhiz-Contract/blob/main/chainwhiz.png?raw=true)
 
 
 |  File Name  |  SHA-1 Hash  |
