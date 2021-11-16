@@ -1,6 +1,7 @@
  Sūrya's Description Report
 
- Files Description Table
+ Flow Diagram
+ [Graph][https://github.com/ChainWhiZ/Chainwhiz-Contract/blob/main/chainwhiz.png]
 
 
 |  File Name  |  SHA-1 Hash  |
