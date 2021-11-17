@@ -22,12 +22,11 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
-  solidity: "0.8.0",
   networks: {
 
-    hardhat:{
-      forking:{
-        url:"https://polygon-mumbai.g.alchemy.com/v2/U7-rQDtPo9P6mDi_gNjQW761_j_nfk8P"
+    hardhat: {
+      forking: {
+        url: "https://polygon-mumbai.g.alchemy.com/v2/U7-rQDtPo9P6mDi_gNjQW761_j_nfk8P"
       },
       gas: 12000000,
       blockGasLimit: 0x1fffffffffffff,
@@ -38,7 +37,20 @@ module.exports = {
       url: process.env.MUMBAI_URL || "",
       accounts:
         process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+      allowUnlimitedContractSize: true,
     },
+  },
+  solidity: {
+    version: "0.8.0",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200,
+      },
+    },
+  },
+  etherscan: {
+    apiKey: process.env.POLYGONSCAN_API_KEY
   },
   gasReporter: {
     enabled: process.env.REPORT_GAS !== undefined,
