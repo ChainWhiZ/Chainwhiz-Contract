@@ -10,7 +10,7 @@ import "./ILendingPoolAddressesProvider.sol";
 import "./IERC20.sol";
 import "./IAaveIncentivesController.sol";
 
-contract ChainwhizCore is  ReentrancyGuard {
+contract ChainwhizCore is ReentrancyGuard {
     //************************   State Variables   ************************ */
     address public ChainwhizAdmin;
     uint256 public MIN_REWARD_AMOUNT = 5 ether;
@@ -141,10 +141,7 @@ contract ChainwhizCore is  ReentrancyGuard {
     }
 
     modifier onlyActiveContract() {
-        require(
-            isContractActive == true,
-            "DEACTIVATE_ERROR"
-        );
+        require(isContractActive == true, "DEACTIVATE_ERROR");
         _;
     }
 
@@ -161,9 +158,8 @@ contract ChainwhizCore is  ReentrancyGuard {
     /// @notice Constructor
     /// @dev constructor to initialise the admin address
     /// @param _ChainwhizAdmin the admin address needs to be passed
-    constructor(address _ChainwhizAdmin) ReentrancyGuard(){
+    constructor(address _ChainwhizAdmin) ReentrancyGuard() {
         ChainwhizAdmin = _ChainwhizAdmin;
-
     }
 
     /// @notice Used to set the new admin
@@ -291,19 +287,17 @@ contract ChainwhizCore is  ReentrancyGuard {
         uint256 _endSolverTime,
         uint256 _startVoteTime,
         uint256 _endVoteTime
-    ) public onlyActiveContract nonReentrant() payable returns (bool) {
+    ) public payable onlyActiveContract nonReentrant returns (bool) {
         // If the github id is not registered with an address then, register it
         if (publisher[_githubId] == address(0)) {
             publisher[_githubId] = msg.sender;
         }
         // To check if the github url linked with address is valid or not
-        require(
-            publisher[_githubId] == msg.sender,
-            "POST_ISSUE_A"
-        );
+        require(publisher[_githubId] == msg.sender, "POST_ISSUE_A");
         // Reward should be greater than min reward
         require(
-            _solverRewardAmount >= MIN_REWARD_AMOUNT && _solverRewardAmount<= MAX_REWARD_AMOUNT,
+            _solverRewardAmount >= MIN_REWARD_AMOUNT &&
+                _solverRewardAmount <= MAX_REWARD_AMOUNT,
             "POST_ISSUE_B"
         );
         // Check user has enough balance
@@ -358,7 +352,7 @@ contract ChainwhizCore is  ReentrancyGuard {
         uint256 _startVoteTime,
         uint256 _endVoteTime,
         bool _isCommunityReaward
-    ) private onlyActiveContract nonReentrant(){
+    ) private onlyActiveContract nonReentrant {
         Question storage question = issueDetail[msg.sender][_githubUrl];
         question.publisher = _publisher;
         question.solverRewardAmount = _solverRewardAmount;
@@ -409,19 +403,13 @@ contract ChainwhizCore is  ReentrancyGuard {
         );
         // To check if the github url linked with address is valid or not
 
-        require(
-            solver[_githubId] == msg.sender,
-            "POST_SOLUTION_B"
-        );
+        require(solver[_githubId] == msg.sender, "POST_SOLUTION_B");
         // Fetch issue related details. It's marked as memory as it saves gas fees
         Question storage question = issueDetail[_publisherAddress][
             _issueGithubUrl
         ];
         //Check if the solution exists or not
-        require(
-            question.solverRewardAmount != 0,
-            "POST_SOLUTION_C"
-        );
+        require(question.solverRewardAmount != 0, "POST_SOLUTION_C");
         // Check if the solver has posted within the solving time
         require(
             question.startSolveTime <= block.timestamp &&
@@ -501,16 +489,13 @@ contract ChainwhizCore is  ReentrancyGuard {
         string memory _solutionLink,
         uint256 _stakeAmount,
         string memory _githubId
-    ) external onlyActiveContract nonReentrant(){
+    ) external onlyActiveContract nonReentrant {
         // If the github is not registered as voter, it registers it
         if (voter[_githubId] == address(0)) {
             voter[_githubId] = msg.sender;
         }
         // To check if th github url is linked with the address is valid or not
-        require(
-            voter[_githubId] == msg.sender,
-            "Error in stakeVote: The address linked github id is not the same"
-        );
+        require(voter[_githubId] == msg.sender, "STAKE_VOTE_A");
         //To check issue exists
         Question storage question = issueDetail[_publisherAddress][
             _issueGithubUrl
@@ -521,7 +506,7 @@ contract ChainwhizCore is  ReentrancyGuard {
                     .solverRewardAmount !=
                 0 &&
                 issueDetail[_publisherAddress][_issueGithubUrl].isCommunityVote,
-            "Error in stakeVote: Issue doesnt exist or has no community vote"
+            "STAKE_VOTE_B"
         );
         //Check that the solution exists
         Solution storage solution = solutionDetails[_issueGithubUrl][
@@ -534,7 +519,7 @@ contract ChainwhizCore is  ReentrancyGuard {
                 keccak256(abi.encodePacked("")) &&
                 keccak256(abi.encodePacked(solution.solutionLink)) ==
                 keccak256(abi.encodePacked(_solutionLink)),
-            "Error in stakeVote: Invalid soluton details"
+            "STAKE_VOTE_C"
         );
         //Check if the staking is done within the time
         require(
@@ -544,7 +529,7 @@ contract ChainwhizCore is  ReentrancyGuard {
                 block.timestamp &&
                 issueDetail[_publisherAddress][_issueGithubUrl].endVoteTime >=
                 block.timestamp,
-            "Error in stakeVote: Voting hasnt started"
+            "STAKE_VOTE_D"
         );
         // To check github id of solver and publisher doesnt match with the voter
         require(
@@ -556,28 +541,25 @@ contract ChainwhizCore is  ReentrancyGuard {
                 keccak256(abi.encodePacked((_githubId))) &&
                 keccak256(abi.encodePacked((_solverGithubId))) !=
                 keccak256(abi.encodePacked((_githubId))),
-            "Error in stakeVote: Publisher or solver cant vote"
+            "STAKE_VOTE_E"
         );
         // To check is stake amount is within the limit
         require(
             _stakeAmount >= MIN_STAKING_AMOUNT &&
                 _stakeAmount <= MAX_STAKE_AMOUNT,
-            "Error in stakeVote: Stake amount isn't within the range"
+            "STAKE_VOTE_F"
         );
         //Voter shouldnt vote multiple times
         require(
             voteDetails[_solutionLink][msg.sender].voter == address(0),
-            "Error in stakeVote: Voter already staked"
+            "STAKE_VOTE_G"
         );
         //Check if voter has alreay voted in any solution
         bool voterVoted = _checkAlreadyVoted(
             issueDetail[_publisherAddress][_issueGithubUrl].voterAddress,
             msg.sender
         );
-        require(
-            !voterVoted,
-            "Error in stakeVote: Voter already voted in a solution"
-        );
+        require(!voterVoted, "STAKE_VOTE_H");
         // lend to aave protocol
         _lendToAave(_stakeAmount);
         //store vote detail
@@ -591,8 +573,8 @@ contract ChainwhizCore is  ReentrancyGuard {
 
     function _checkAlreadyVoted(address[] memory _voterAddress, address _voter)
         private
-        onlyActiveContract
         view
+        onlyActiveContract
         returns (bool)
     {
         uint256 lengthOfArr = _voterAddress.length;
@@ -603,7 +585,7 @@ contract ChainwhizCore is  ReentrancyGuard {
         return false;
     }
 
-    function _lendToAave(uint256 _amount) private nonReentrant(){
+    function _lendToAave(uint256 _amount) private nonReentrant {
         // Initialise the ETHGateway Contract
         IWETHGateway ethGateWay = IWETHGateway(ethGateWayAddress);
         // Initialise the LendingPoolAddressesProvider Contract
@@ -626,7 +608,7 @@ contract ChainwhizCore is  ReentrancyGuard {
         string memory _solutionLink,
         address _voter,
         uint256 _stakeAmount
-    ) private onlyActiveContract nonReentrant(){
+    ) private onlyActiveContract nonReentrant {
         Vote storage vote = voteDetails[_solutionLink][_voter];
         vote.voter = _voter;
         vote.amountStaked = _stakeAmount;
@@ -656,13 +638,13 @@ contract ChainwhizCore is  ReentrancyGuard {
             _solutionLinks.length == end &&
                 _voterAddress.length == end &&
                 _amount.length == end,
-            "Error in setUnstakeAmount:Uneven size"
+            "SET_UNSTAKE_A"
         );
         require(
             issueDetail[_publisher][_issueLink].endVoteTime <=
                 block.timestamp &&
                 !issueDetail[_publisher][_issueLink].isUnstakeSet,
-            "Error in setUnstakeAmount: Voting hasnt over or already set"
+            "SET_UNSTAKE_B"
         );
         for (uint256 i = start; i < end; i++) {
             Vote storage vote = voteDetails[_solutionLinks[i]][
@@ -670,7 +652,7 @@ contract ChainwhizCore is  ReentrancyGuard {
             ];
             require(
                 vote.amountStaked != 0 && vote.returnAmount != 0,
-                "Error in setUnstakeAmount:unstake is zero or invalid entry"
+                "SET_UNSTAKE_C"
             );
             vote.returnAmount = _amount[i];
             if (vote.amountStaked > vote.returnAmount)
@@ -681,14 +663,22 @@ contract ChainwhizCore is  ReentrancyGuard {
     }
 
     //For each voter to claim their staked amount(either slashed or with reward)
-    function unstake(string memory _solutionLink) external onlyActiveContract nonReentrant(){
+    function unstake(string memory _solutionLink)
+        external
+        onlyActiveContract
+        nonReentrant
+    {
         Vote storage vote = voteDetails[_solutionLink][msg.sender];
         _withdrawFromAave(vote.returnAmount, msg.sender);
         vote.isUnstake = true;
         emit VoterUnstaked(_solutionLink);
     }
 
-    function _withdrawFromAave(uint256 _amount, address _to) private onlyActiveContract nonReentrant(){
+    function _withdrawFromAave(uint256 _amount, address _to)
+        private
+        onlyActiveContract
+        nonReentrant
+    {
         // Initialise the ETHGateway Contract
         IWETHGateway ethGateWay = IWETHGateway(ethGateWayAddress);
         // Initialise the LendingPoolAddressesProvider Contract
@@ -705,7 +695,7 @@ contract ChainwhizCore is  ReentrancyGuard {
     function initiateEscrow(
         string memory _issueLink,
         string memory _solverGithubId
-    ) external onlyActiveContract{
+    ) external onlyActiveContract {
         //get question details
         Question storage question = issueDetail[msg.sender][_issueLink];
         console.log(question.isCommunityVote);
@@ -716,14 +706,14 @@ contract ChainwhizCore is  ReentrancyGuard {
         //only publisher or admin(in case of disperancy) can initiate the escrow
         require(
             question.publisher == msg.sender || ChainwhizAdmin == msg.sender,
-            "Error in initiateEscrow: Unautorized"
+            "INIT_ESCROW_A"
         );
         //check if solution is legitimate
         require(
             keccak256(abi.encodePacked(solution.solutionLink)) !=
                 keccak256(abi.encodePacked("")) &&
                 solution.solver != address(0),
-            "Error in initiateEscrow:invalid solution"
+            "INIT_ESCROW_B"
         );
         //1st condition for issue without vote and 2nd for with vote
         require(
@@ -732,13 +722,13 @@ contract ChainwhizCore is  ReentrancyGuard {
                 (question.isCommunityVote &&
                     question.endVoteTime <= block.timestamp &&
                     question.questionStatus == QuestionStatus.Vote),
-            "Error in initiateEscrow: Voting/Solving hasnt finished"
+            "INIT_ESCROW_C"
         );
         //check for the state too
         require(
             question.questionStatus == QuestionStatus.Solve ||
                 question.questionStatus == QuestionStatus.Vote,
-            "Error in initiateEscrow:Voting/Solve is going on"
+            "INIT_ESCROW_D"
         );
         // finally update the status
         question.questionStatus = QuestionStatus.Escrow;
@@ -759,7 +749,7 @@ contract ChainwhizCore is  ReentrancyGuard {
     function transferRewardAmount(address _publisher, string memory _issueLink)
         external
         onlyActiveContract
-        nonReentrant()
+        nonReentrant
     {
         //get question details
         Question memory question = issueDetail[_publisher][_issueLink];
@@ -767,17 +757,17 @@ contract ChainwhizCore is  ReentrancyGuard {
         require(
             question.choosenSolution.solver == msg.sender ||
                 ChainwhizAdmin == msg.sender,
-            "Error in transferOwnership: Unauthorized"
+            "TRANSFER_REWARD_A"
         );
         //check for the escrow and question status
         require(
             question.questionStatus == QuestionStatus.Escrow &&
                 question.choosenSolution.escrowStatus == EscrowStatus.Initiate,
-            "Error in transferOwnership: Not at right state"
+            "TRANSFER_REWARD_B"
         );
         // update the state
         question.choosenSolution.escrowStatus = EscrowStatus.Complete;
-          _transferFunds(
+        _transferFunds(
             payable(question.choosenSolution.solver),
             question.solverRewardAmount
         );
@@ -827,12 +817,17 @@ contract ChainwhizCore is  ReentrancyGuard {
     function _transferFunds(address payable _solver, uint256 _rewardAmount)
         private
         onlyActiveContract
-        nonReentrant()
+        nonReentrant
     {
         _solver.transfer(_rewardAmount);
     }
 
-    function claimInterest(address _claimer) external onlyActiveContract onlyChainwhizAdmin nonReentrant(){
+    function claimInterest(address _claimer)
+        external
+        onlyActiveContract
+        onlyChainwhizAdmin
+        nonReentrant
+    {
         IAaveIncentivesController incentive = IAaveIncentivesController(
             aaveIncentiveAddress
         );
@@ -843,18 +838,15 @@ contract ChainwhizCore is  ReentrancyGuard {
         incentive.claimRewards(rewardAddress, claimAmount, _claimer);
     }
 
-    function withdrawFromTrasery(uint256 _amount, address _to)
+    function withdrawFromTreasery(uint256 _amount, address _to)
         external
         onlyActiveContract
         onlyChainwhizAdmin
-        nonReentrant()
+        nonReentrant
     {
         //check if the amount is less than the amount in treasery
-        require(
-            _amount <= ChainwhizTreasary,
-            "Error in withdrawFromTrasery: Invalid amount"
-        );
-        require(_to != address(0));
+        require(_amount <= ChainwhizTreasary, "TREASARY_WITHDRAW_A");
+        require(_to != address(0), "TREASARY_WITHDRAW_B");
         _withdrawFromAave(_amount, _to);
     }
 
