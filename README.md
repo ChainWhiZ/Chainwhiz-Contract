@@ -1,9 +1,9 @@
  Sūrya's Description Report
 
- Flow Diagram
+ ## Flow Diagram
  ![Graph](https://github.com/ChainWhiZ/Chainwhiz-Contract/blob/main/chainwhiz.png?raw=true)
 
- Contracts Description Table
+ ## Contracts Description Table
 
  Legend
 
