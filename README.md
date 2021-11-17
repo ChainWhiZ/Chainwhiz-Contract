@@ -5,6 +5,13 @@
 
  Contracts Description Table
 
+ Legend
+
+|  Symbol  |  Meaning  |
+|:--------:|-----------|
+|    🛑    | Function can modify state |
+|    💵    | Function is payable |
+
 
 |  Contract  |         Type        |       Bases      |                  |                 |
 |:----------:|:-------------------:|:----------------:|:----------------:|:---------------:|
@@ -64,9 +71,3 @@
 | └ | getRewardsBalance | External ❗️ |   |NO❗️ |
 
 
- Legend
-
-|  Symbol  |  Meaning  |
-|:--------:|-----------|
-|    🛑    | Function can modify state |
-|    💵    | Function is payable |
