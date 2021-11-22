@@ -12,8 +12,8 @@ describe("ChainwhizCore Solution Posting --> postSolution validations", function
 
     ;[owner, a1, a2, a3, _] = await ethers.getSigners()
     Chainwhiz = await ethers.getContractFactory("ChainwhizCore");
-    chainwhiz = await Chainwhiz.deploy()
-    await chainwhiz.connect(owner).initialize(owner.address);
+    chainwhiz = await Chainwhiz.connect(owner).deploy(owner.address)
+    // await chainwhiz.connect(owner).initialize(owner.address);
     chainwhiz.connect(a2).postIssue("efg", "www.google.com", tokensBN(10), tokensBN(2), Math.floor(Date.now() / 1000) + 1000, Math.floor(Date.now() / 1000) - 2000, Math.floor(Date.now() / 1000) + 5000, true, { value: tokensBN(12) })
 
   })

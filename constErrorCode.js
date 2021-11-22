@@ -5,9 +5,10 @@ const ErrorCodes = {
     "ACTIVE_ERROR": "Contract is active",
     //issue related errors
     "POST_ISSUE_A": "Error in postIssue: The address linked github id is not the same",
-    "POST_ISSUE_B": "Error in postIssue: Reawrd amount cannot be less than MIN_REWARD_AMOUNT",
+    "POST_ISSUE_B": "Error in postIssue: Reawrd amount is not within the range",
     "POST_ISSUE_C": "Error in postIssue: User doesnt have enough balance",
     "POST_ISSUE_D": "Error in postIssue: User didnt transfer sufficient funds",
+    "POST_ISSUE_E": "Error in postIssue: Community Reward is not within the range",
     //solution related errors
     "POST_SOLUTION_A": "Error in postSolution: Publisher cannot post solution",
     "POST_SOLUTION_B": "Error in postSolution: The address linked github id is not the same",
