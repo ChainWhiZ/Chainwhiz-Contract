@@ -287,7 +287,7 @@ contract ChainwhizCore is ReentrancyGuard {
         uint256 _endSolverTime,
         uint256 _startVoteTime,
         uint256 _endVoteTime
-    ) public payable onlyActiveContract nonReentrant returns (bool) {
+    ) public payable onlyActiveContract returns (bool) {
         // If the github id is not registered with an address then, register it
         if (publisher[_githubId] == address(0)) {
             publisher[_githubId] = msg.sender;
