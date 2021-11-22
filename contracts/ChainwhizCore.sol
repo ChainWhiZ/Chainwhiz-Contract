@@ -311,6 +311,10 @@ contract ChainwhizCore is ReentrancyGuard {
             msg.value >= (_solverRewardAmount + _communityVoterRewardAmount),
             "POST_ISSUE_D"
         );
+        if(_communityVoterRewardAmount!=0)
+        {
+            require(_communityVoterRewardAmount>= MIN_COMMUNITY_REWARD_AMOUNT && _communityVoterRewardAmount<= MAX_COMMUNITY_REWARD_AMOUNT,"POST_ISSUE_E");
+        }
 
         emit IssuePosted(
             msg.sender,
