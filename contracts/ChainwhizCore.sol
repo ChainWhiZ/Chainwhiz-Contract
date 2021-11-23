@@ -501,7 +501,6 @@ contract ChainwhizCore is ReentrancyGuard {
     /// @param _solverGithubId solver github id
     /// @param _solver solver address
     /// @param _solutionLink the solution link to be voted on
-    /// @param _stakeAmount amount to be staked
     /// @param _githubId the voter github id
     function stakeVote(
         string memory _issueGithubUrl,
@@ -510,9 +509,8 @@ contract ChainwhizCore is ReentrancyGuard {
         string memory _solverGithubId,
         address _solver,
         string memory _solutionLink,
-        uint256 _stakeAmount,
         string memory _githubId
-    ) external onlyActiveContract nonReentrant {
+    ) external payable onlyActiveContract {
         // If the github is not registered as voter, it registers it
         if (voter[_githubId] == address(0)) {
             voter[_githubId] = msg.sender;
@@ -568,8 +566,8 @@ contract ChainwhizCore is ReentrancyGuard {
         );
         // To check is stake amount is within the limit
         require(
-            _stakeAmount >= MIN_STAKING_AMOUNT &&
-                _stakeAmount <= MAX_STAKE_AMOUNT,
+            msg.value >= MIN_STAKING_AMOUNT &&
+                msg.value <= MAX_STAKE_AMOUNT,
             "STAKE_VOTE_F"
         );
         //Voter shouldnt vote multiple times
@@ -577,21 +575,22 @@ contract ChainwhizCore is ReentrancyGuard {
             voteDetails[_solutionLink][msg.sender].voter == address(0),
             "STAKE_VOTE_G"
         );
+        //*********** Need opinion on this ****************** */
         //Check if voter has alreay voted in any solution
         bool voterVoted = _checkAlreadyVoted(
             issueDetail[_publisherAddress][_issueGithubUrl].voterAddress,
             msg.sender
         );
         require(!voterVoted, "STAKE_VOTE_H");
-        // lend to aave protocol
-        _lendToAave(_stakeAmount);
         //store vote detail
-        _storeVoteDetail(_solutionLink, msg.sender, _stakeAmount);
+        _storeVoteDetail(_solutionLink, msg.sender, msg.value);
 
         question.voterAddress.push(msg.sender);
         solution.voterAddress.push(msg.sender);
+        // lend to aave protocol
+        _lendToAave(msg.value);
         //emit event
-        emit VoteStaked(_solutionLink, msg.sender, _stakeAmount);
+        emit VoteStaked(_solutionLink, msg.sender, msg.value);
     }
 
     function _checkAlreadyVoted(address[] memory _voterAddress, address _voter)
@@ -615,7 +614,7 @@ contract ChainwhizCore is ReentrancyGuard {
         ILendingPoolAddressesProvider lendingProvider = ILendingPoolAddressesProvider(
                 lendingPoolProviderAddress
             );
-        console.log(lendingProvider.getLendingPool());
+        // console.log(lendingProvider.getLendingPool());
         // Lend the matic tokens to the Aave Protocol.
         ethGateWay.depositETH{value: _amount}(
             // Address of Lending Pool
