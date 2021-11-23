@@ -12,9 +12,9 @@ describe("ChainwhizCore Voting Stage --> startVotingStage validations", function
 
     [owner, a1, a2, a3, _] = await ethers.getSigners()
     Chainwhiz = await ethers.getContractFactory("ChainwhizCore");
-    chainwhiz = await Chainwhiz.deploy()
-    await chainwhiz.connect(owner).initialize(owner.address);
-    await chainwhiz.connect(a2).postIssue("efg", "www.google.com", tokensBN(10), tokensBN(2), Math.floor(Date.now() / 1000) + 1000, Math.floor(Date.now() / 1000) - 2000, Math.floor(Date.now() / 1000) + 5000, true, { value: tokensBN(12) })
+    chainwhiz = await Chainwhiz.connect(owner).deploy(owner.address)
+    // await chainwhiz.connect(owner).initialize(owner.address);
+    await chainwhiz.connect(a2).postIssue("efg", "www.google.com", tokensBN(10), tokensBN(12), Math.floor(Date.now() / 1000) + 1000, Math.floor(Date.now() / 1000) - 2000, Math.floor(Date.now() / 1000) + 5000, { value: tokensBN(22) })
     await chainwhiz.connect(a1).postSolution("abc", "www.facebook.com", "www.google.com", a2.address, "efg");
   })
 

@@ -311,9 +311,12 @@ contract ChainwhizCore is ReentrancyGuard {
             msg.value >= (_solverRewardAmount + _communityVoterRewardAmount),
             "POST_ISSUE_D"
         );
-        if(_communityVoterRewardAmount!=0)
-        {
-            require(_communityVoterRewardAmount>= MIN_COMMUNITY_REWARD_AMOUNT && _communityVoterRewardAmount<= MAX_COMMUNITY_REWARD_AMOUNT,"POST_ISSUE_E");
+        if (_communityVoterRewardAmount != 0) {
+            require(
+                _communityVoterRewardAmount >= MIN_COMMUNITY_REWARD_AMOUNT &&
+                    _communityVoterRewardAmount <= MAX_COMMUNITY_REWARD_AMOUNT,
+                "POST_ISSUE_E"
+            );
         }
 
         emit IssuePosted(
@@ -412,7 +415,7 @@ contract ChainwhizCore is ReentrancyGuard {
         Question storage question = issueDetail[_publisherAddress][
             _issueGithubUrl
         ];
-        //Check if the solution exists or not
+        //Check if the question exists or not
         require(question.solverRewardAmount != 0, "POST_SOLUTION_C");
         // Check if the solver has posted within the solving time
         require(
@@ -426,6 +429,8 @@ contract ChainwhizCore is ReentrancyGuard {
             solutionDetails[_issueGithubUrl][_githubId].solver != msg.sender,
             "POST_SOLUTION_E"
         );
+        //check if the submitted solution exists or not
+        _checkForDuplicateSolution(question.solutionLinks, _solutionLink);
 
         Solution storage solution = solutionDetails[_issueGithubUrl][_githubId];
         solution.solver = msg.sender;
@@ -439,6 +444,20 @@ contract ChainwhizCore is ReentrancyGuard {
             _issueGithubUrl
         );
         return true;
+    }
+
+    function _checkForDuplicateSolution(
+        string[] memory solutionArray,
+        string memory solutionLink
+    ) private pure {
+        uint256 i = 0;
+        for (i; i < solutionArray.length; i++) {
+            require(
+                keccak256(abi.encodePacked(solutionArray[i])) !=
+                    keccak256(abi.encodePacked(solutionLink)),
+                "POST_SOLUTION_F"
+            );
+        }
     }
 
     /// @notice Start the voting phase

@@ -15,6 +15,7 @@ const ErrorCodes = {
     "POST_SOLUTION_C": "Error in postSolution: The github issue doesnt exist",
     "POST_SOLUTION_D": "Error in postSolution: Solving time has not started or has completed",
     "POST_SOLUTION_E": "Error in postSolution: Solver can post only one solution",
+    "POST_SOLUTION_F": "Error in postSolution: Solution already exists",
     //start vote related errors
     "START_VOTE_A": "Error in startVotingStage: Community vote is disabled or initiated beyond the voting phase",
     "START_VOTE_B": "Error in startVotingStage: Only admin or issue poster can initiate",
