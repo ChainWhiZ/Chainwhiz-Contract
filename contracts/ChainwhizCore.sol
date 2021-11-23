@@ -720,7 +720,7 @@ contract ChainwhizCore is ReentrancyGuard {
     ) external onlyActiveContract {
         //get question details
         Question storage question = issueDetail[msg.sender][_issueLink];
-        console.log(question.isCommunityVote);
+        // console.log(question.isCommunityVote);
         //get solution details
         Solution storage solution = solutionDetails[_issueLink][
             _solverGithubId
