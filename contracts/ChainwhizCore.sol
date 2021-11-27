@@ -151,7 +151,7 @@ contract ChainwhizCore is ReentrancyGuard {
     }
 
     //************************   Functions   ************************ */
-    fallback() external {}
+    fallback() external payable {}
 
     receive() external payable {}
 
@@ -298,7 +298,7 @@ contract ChainwhizCore is ReentrancyGuard {
         require(
             _solverRewardAmount >= MIN_REWARD_AMOUNT &&
                 _solverRewardAmount <= MAX_REWARD_AMOUNT,
-            "POST_ISSUE_B"
+            "POST_ISfafkfkefgieufgiuegfiugiugdkadjdbkjdbfkjbdfkjbakfjbaSUE_B"
         );
         // Check user has enough balance
         require(
@@ -566,8 +566,7 @@ contract ChainwhizCore is ReentrancyGuard {
         );
         // To check is stake amount is within the limit
         require(
-            msg.value >= MIN_STAKING_AMOUNT &&
-                msg.value <= MAX_STAKE_AMOUNT,
+            msg.value >= MIN_STAKING_AMOUNT && msg.value <= MAX_STAKE_AMOUNT,
             "STAKE_VOTE_F"
         );
         //Voter shouldnt vote multiple times
@@ -836,12 +835,12 @@ contract ChainwhizCore is ReentrancyGuard {
     //     );
     // }
 
-    function _transferFunds(address payable _solver, uint256 _rewardAmount)
+    function _transferFunds(address payable _receipient, uint256 _amount)
         private
         onlyActiveContract
         nonReentrant
     {
-        _solver.transfer(_rewardAmount);
+        _receipient.transfer(_amount);
     }
 
     function claimInterest(address _claimer)
@@ -874,5 +873,37 @@ contract ChainwhizCore is ReentrancyGuard {
 
     function setApproval(uint256 _approvalAmount) public {
         IERC20(aMaticAddress).approve(ethGateWayAddress, _approvalAmount);
+    }
+
+    function payBackPublisher(
+        address _publisherAddress,
+        string memory _issueGithubUrl,
+        bool flag
+    ) external onlyActiveContract onlyChainwhizAdmin nonReentrant {
+        Question storage question = issueDetail[_publisherAddress][
+            _issueGithubUrl
+        ];
+        require(question.solverRewardAmount != 0, "REFUND_ERROR_A");
+        require(
+            question.questionStatus == QuestionStatus.Over ||
+                question.questionStatus == QuestionStatus.Solve ||
+                question.questionStatus == QuestionStatus.Vote,
+            "REFUND_ERROR_B"
+        );
+        //if flag == true, transfer the whole reward back
+        if (flag) {
+            _transferFunds(
+                payable(_publisherAddress),
+                question.solverRewardAmount +
+                    question.communityVoterRewardAmount
+            );
+        }
+        //if flag == false, transfer only the solver reward back
+        else {
+            _transferFunds(
+                payable(_publisherAddress),
+                question.solverRewardAmount
+            );
+        }
     }
 }
