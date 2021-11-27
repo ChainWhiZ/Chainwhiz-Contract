@@ -298,7 +298,7 @@ contract ChainwhizCore is ReentrancyGuard {
         require(
             _solverRewardAmount >= MIN_REWARD_AMOUNT &&
                 _solverRewardAmount <= MAX_REWARD_AMOUNT,
-            "POST_ISfafkfkefgieufgiuegfiugiugdkadjdbkjdbfkjbdfkjbakfjbaSUE_B"
+            "POST_ISSUE_B"
         );
         // Check user has enough balance
         require(
