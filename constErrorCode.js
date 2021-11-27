@@ -42,9 +42,10 @@ const ErrorCodes = {
     "TRANSFER_REWARD_B":"Error in transferOwnership: Not at right state",
     //trasrey withdraw error
     "TREASARY_WITHDRAW_A":"Error in withdrawFromTrasery: Invalid amount",
-    "TREASARY_WITHDRAW_B":"Error in withdrawFromTreasery:Not valid to address"
-
-
+    "TREASARY_WITHDRAW_B":"Error in withdrawFromTreasery:Not valid to address",
+    //refunding to publisher
+    "REFUND_ERROR_A":"Question doesnt exist",
+    "REFUND_ERROR_B":"Invalid State"
 
 }
 module.export = ErrorCodes
