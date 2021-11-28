@@ -198,6 +198,18 @@ contract ChainwhizCore is ReentrancyGuard {
         MIN_STAKING_AMOUNT = _newStakeAmount;
     }
 
+     /// @notice Used to set the minimum stake amount
+    /// @dev The modifier onlyChainwhizAdmin is used so that the current admin can change the minimum stake
+    /// @param _newCommunityRewardAmount as input from admin
+
+    function setMinimumCommunityRewardAmount(uint256 _newCommunityRewardAmount)
+        external
+        onlyChainwhizAdmin
+        onlyActiveContract
+    {
+        MIN_COMMUNITY_REWARD_AMOUNT = _newCommunityRewardAmount;
+    }
+
     /// @notice Used to deactive contract in case of security issue
     /// @dev Modifiers onlyChainwhizAdmin onlyActiveContract are used
 
