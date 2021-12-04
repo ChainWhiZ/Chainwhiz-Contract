@@ -381,6 +381,7 @@ contract ChainwhizCore is ReentrancyGuard {
         question.startVoteTime = _startVoteTime;
         question.endVoteTime = _endVoteTime;
         question.isCommunityVote = _isCommunityReaward;
+        question.questionStatus = QuestionStatus.Solve;
         payable(address(this)).transfer(msg.value);
 
         //****************************  Logs for testing only  ****************************************** */
@@ -782,7 +783,6 @@ contract ChainwhizCore is ReentrancyGuard {
     function transferRewardAmount(address _publisher, string memory _issueLink)
         external
         onlyActiveContract
-        nonReentrant
     {
         //get question details
         Question memory question = issueDetail[_publisher][_issueLink];
@@ -891,7 +891,7 @@ contract ChainwhizCore is ReentrancyGuard {
         address _publisherAddress,
         string memory _issueGithubUrl,
         bool flag
-    ) external onlyActiveContract onlyChainwhizAdmin nonReentrant {
+    ) external onlyActiveContract onlyChainwhizAdmin {
         Question storage question = issueDetail[_publisherAddress][
             _issueGithubUrl
         ];
