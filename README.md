@@ -71,3 +71,17 @@
 | └ | getRewardsBalance | External ❗️ |   |NO❗️ |
 
 
+
+ Legend
+
+|  Symbol  |  Meaning  |
+|:--------:|-----------|
+|    🛑    | Function can modify state |
+|    💵    | Function is payable |
+
+# To deploy
+ `npx hardhat run --network mumbai scripts/deploy.js`
+
+ # To Verify
+ `npx hardhat verify "Address" --network mumbai "constructor parameter"`
+

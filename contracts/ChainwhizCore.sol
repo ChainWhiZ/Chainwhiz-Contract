@@ -685,7 +685,7 @@ contract ChainwhizCore is ReentrancyGuard {
                 _voterAddress[i]
             ];
             require(
-                vote.amountStaked != 0 && vote.returnAmount != 0,
+                vote.amountStaked != 0,
                 "SET_UNSTAKE_C"
             );
             vote.returnAmount = _amount[i];
