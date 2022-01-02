@@ -12,7 +12,7 @@ describe("ChainwhizCore Escrow --> initiateEscrow validations", function () {
         Chainwhiz = await ethers.getContractFactory("ChainwhizCore");
         chainwhiz = await Chainwhiz.connect(owner).deploy(owner.address)
         // await chainwhiz.connect(owner).initialize(owner.address);
-        await chainwhiz.connect(a2).postIssue("efg", "www.google.com", tokensBN(10), tokensBN(0), Math.floor(Date.now() / 1000) + 1000, 0, 0, { value: tokensBN(12) })
+        await chainwhiz.connect(a2).postIssue("efg", "www.google.com", tokensBN(10), tokensBN(0), Math.floor(Date.now() / 1000) + 1000, 0, 0, "MATIC", { value: tokensBN(12) })
         await chainwhiz.connect(a1).postSolution("abc", "www.facebook.com", "www.google.com", a2.address, "efg");
     })
 

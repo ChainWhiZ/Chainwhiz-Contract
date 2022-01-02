@@ -14,7 +14,7 @@ describe("ChainwhizCore Solution Posting --> postSolution validations", function
     Chainwhiz = await ethers.getContractFactory("ChainwhizCore");
     chainwhiz = await Chainwhiz.connect(owner).deploy(owner.address)
     // await chainwhiz.connect(owner).initialize(owner.address);
-    chainwhiz.connect(a2).postIssue("efg", "www.google.com", tokensBN(10), tokensBN(12), Math.floor(Date.now() / 1000) + 1000, Math.floor(Date.now() / 1000) - 2000, Math.floor(Date.now() / 1000) + 5000, { value: tokensBN(22) })
+    chainwhiz.connect(a2).postIssue("efg", "www.google.com", tokensBN(10), tokensBN(12), Math.floor(Date.now() / 1000) + 1000, Math.floor(Date.now() / 1000) - 2000, Math.floor(Date.now() / 1000) + 5000, "MATIC", { value: tokensBN(22) })
 
   })
 
@@ -55,7 +55,7 @@ describe("ChainwhizCore Solution Posting --> [Special testcase] to check time ba
     Chainwhiz = await ethers.getContractFactory("ChainwhizCore");
     chainwhiz = await Chainwhiz.connect(owner).deploy(owner.address)
     // await chainwhiz.connect(owner).initialize(owner.address);
-    chainwhiz.connect(a2).postIssue("efg", "www.google.com", tokensBN(10), tokensBN(12), Math.floor(Date.now() / 1000) + 1000, Math.floor(Date.now() / 1000) - 2000, Math.floor(Date.now() / 1000) + 5000, { value: tokensBN(22) })
+    chainwhiz.connect(a2).postIssue("efg", "www.google.com", tokensBN(10), tokensBN(12), Math.floor(Date.now() / 1000) + 1000, Math.floor(Date.now() / 1000) - 2000, Math.floor(Date.now() / 1000) + 5000, "MATIC", { value: tokensBN(22) })
 
   })
 

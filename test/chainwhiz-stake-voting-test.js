@@ -14,7 +14,7 @@ describe("ChainwhizCore Voting Stage --> startVotingStage validations", function
     Chainwhiz = await ethers.getContractFactory("ChainwhizCore");
     chainwhiz = await Chainwhiz.connect(owner).deploy(owner.address)
     // await chainwhiz.connect(owner).initialize(owner.address);
-    await chainwhiz.connect(a2).postIssue("efg", "www.google.com", tokensBN(10), tokensBN(12), Math.floor(Date.now() / 1000) + 1000, Math.floor(Date.now() / 1000) - 2000, Math.floor(Date.now() / 1000) + 5000, { value: tokensBN(22) })
+    await chainwhiz.connect(a2).postIssue("efg", "www.google.com", tokensBN(10), tokensBN(12), Math.floor(Date.now() / 1000) + 1000, Math.floor(Date.now() / 1000) - 2000, Math.floor(Date.now() / 1000) + 5000, "MATIC", { value: tokensBN(22) })
     await chainwhiz.connect(a1).postSolution("abc", "www.facebook.com", "www.google.com", a2.address, "efg");
   })
 
@@ -36,7 +36,7 @@ describe("ChainwhizCore Voting Stage --> stakeVote", function () {
     // AMatic = await matic.attach("0xF45444171435d0aCB08a8af493837eF18e86EE27");
 
     // await chainwhiz.connect(owner).initialize(owner.address);
-    await chainwhiz.connect(a2).postIssue("efg", "www.google.com", tokensBN(10), tokensBN(12), Math.floor(Date.now() / 1000) + 1000, Math.floor(Date.now() / 1000) - 2000, Math.floor(Date.now() / 1000) + 5000, { value: tokensBN(22) })
+    await chainwhiz.connect(a2).postIssue("efg", "www.google.com", tokensBN(10), tokensBN(12), Math.floor(Date.now() / 1000) + 1000, Math.floor(Date.now() / 1000) - 2000, Math.floor(Date.now() / 1000) + 5000, "MATIC", { value: tokensBN(22) })
     await chainwhiz.connect(a1).postSolution("abc", "www.facebook.com", "www.google.com", a2.address, "efg");
     await chainwhiz.connect(owner).setETHGatewayAddress(aaveAddresses.ETH_GATEWAY_ADDRESS)
     await chainwhiz.connect(owner).setLendingPoolProviderAddress(aaveAddresses.LENDING_POOL_PROVIDER_ADDRESS)
