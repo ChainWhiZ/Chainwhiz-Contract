@@ -601,15 +601,15 @@ contract ChainwhizCore is ReentrancyGuard {
         Solution storage solution = solutionDetails[_issueGithubUrl][
             _solverGithubId
         ];
-        require(
-            solver[_solverGithubId] == _solver &&
-                solution.solver != address(0) &&
-                keccak256(abi.encodePacked(solution.solutionLink)) !=
-                keccak256(abi.encodePacked("")) &&
-                keccak256(abi.encodePacked(solution.solutionLink)) ==
-                keccak256(abi.encodePacked(_solutionLink)),
-            "STAKE_VOTE_C"
-        );
+        // require(
+        //     solver[_solverGithubId] == _solver &&
+        //         solution.solver != address(0) &&
+        //         keccak256(abi.encodePacked(solution.solutionLink)) !=
+        //         keccak256(abi.encodePacked("")) &&
+        //         keccak256(abi.encodePacked(solution.solutionLink)) ==
+        //         keccak256(abi.encodePacked(_solutionLink)),
+        //     "STAKE_VOTE_C"
+        // );
         //Check if the staking is done within the time
         require(
             issueDetail[_publisherAddress][_issueGithubUrl].questionStatus ==
@@ -625,11 +625,13 @@ contract ChainwhizCore is ReentrancyGuard {
             publisher[_githubId] != msg.sender &&
                 solver[_githubId] != msg.sender &&
                 solution.solver != msg.sender &&
-                question.publisher != msg.sender &&
-                keccak256(abi.encodePacked((_publisherGithubId))) !=
-                keccak256(abi.encodePacked((_githubId))) &&
-                keccak256(abi.encodePacked((_solverGithubId))) !=
-                keccak256(abi.encodePacked((_githubId))),
+                question.publisher != msg.sender 
+                // &&
+                // keccak256(abi.encodePacked((_publisherGithubId))) !=
+                // keccak256(abi.encodePacked((_githubId))) &&
+                // keccak256(abi.encodePacked((_solverGithubId))) !=
+                // keccak256(abi.encodePacked((_githubId)))
+                ,
             "STAKE_VOTE_E"
         );
         // To check is stake amount is within the limit
@@ -644,11 +646,11 @@ contract ChainwhizCore is ReentrancyGuard {
         );
         //*********** Need opinion on this ****************** */
         //Check if voter has alreay voted in any solution
-        bool voterVoted = _checkAlreadyVoted(
-            issueDetail[_publisherAddress][_issueGithubUrl].voterAddress,
-            msg.sender
-        );
-        require(!voterVoted, "STAKE_VOTE_H");
+        // bool voterVoted = _checkAlreadyVoted(
+        //     issueDetail[_publisherAddress][_issueGithubUrl].voterAddress,
+        //     msg.sender
+        // );
+        // require(!voterVoted, "STAKE_VOTE_H");
         //store vote detail
         _storeVoteDetail(
             _solutionLink,
