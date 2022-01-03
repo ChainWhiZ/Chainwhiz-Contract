@@ -52,10 +52,10 @@ module.exports = {
   etherscan: {
     apiKey: process.env.POLYGONSCAN_API_KEY
   },
-  // gasReporter: {
-  //   enabled: process.env.REPORT_GAS,
-  //   currency: "USD",
-  //   token: "MATIC",
-  //   gasPriceApi: "https://api.polygonscan.com/api?module=proxy&action=eth_gasPrice"
-  // },
+  gasReporter: {
+    enabled: process.env.REPORT_GAS,
+    currency: "USD",
+    token: "MATIC",
+    gasPriceApi: "https://api.polygonscan.com/api?module=proxy&action=eth_gasPrice"
+  },
 };
