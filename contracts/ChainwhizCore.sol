@@ -55,6 +55,7 @@ contract ChainwhizCore is ReentrancyGuard {
         QuestionStatus questionStatus;
         bool isUnstakeSet;
         Solution choosenSolution;
+        string tokenName;
     }
 
     struct Solution {
@@ -70,7 +71,9 @@ contract ChainwhizCore is ReentrancyGuard {
         address voter;
         uint256 votingPower;
         uint256 amountStaked;
-        uint256 returnAmount;
+        uint256 returnRewardAmount;
+        uint256 returnBaseAmount;
+        string rewardToken;
         bool isUnstake;
     }
 
@@ -93,7 +96,8 @@ contract ChainwhizCore is ReentrancyGuard {
     mapping(string => address) public solver;
     //mapping issue link to solver githubid which is turn is mapped to the solution details
     mapping(string => mapping(string => Solution)) public solutionDetails;
-
+    //mapping to store token name linked to their token address
+    mapping(string => address) public tokenDetails;
     //************************   Events   ************************ */
     event DeactivateContract();
     event ActivateContract();
@@ -198,7 +202,7 @@ contract ChainwhizCore is ReentrancyGuard {
         MIN_STAKING_AMOUNT = _newStakeAmount;
     }
 
-     /// @notice Used to set the minimum stake amount
+    /// @notice Used to set the minimum stake amount
     /// @dev The modifier onlyChainwhizAdmin is used so that the current admin can change the minimum stake
     /// @param _newCommunityRewardAmount as input from admin
 
@@ -281,6 +285,15 @@ contract ChainwhizCore is ReentrancyGuard {
         aMaticAddress = _aMaticAddress;
     }
 
+    /// @notice Set the token details
+    function setTokenDetails(string memory tokenName, address tokenAddress)
+        external
+        onlyChainwhizAdmin
+        onlyActiveContract
+    {
+        tokenDetails[tokenName] = tokenAddress;
+    }
+
     /// @notice Post a bounty
     /// @dev The require check are there for various validations
     /// @param _githubId the github id
@@ -290,6 +303,7 @@ contract ChainwhizCore is ReentrancyGuard {
     /// @param _endSolverTime Time at which solving will be over
     /// @param _startVoteTime Time at which voting will start
     /// @param _endVoteTime Time at which voting will over
+    /// @param _tokenName Name of the token
     /// @return true if posted successfully or false
     function postIssue(
         string memory _githubId,
@@ -298,7 +312,8 @@ contract ChainwhizCore is ReentrancyGuard {
         uint256 _communityVoterRewardAmount,
         uint256 _endSolverTime,
         uint256 _startVoteTime,
-        uint256 _endVoteTime
+        uint256 _endVoteTime,
+        string memory _tokenName
     ) public payable onlyActiveContract returns (bool) {
         // If the github id is not registered with an address then, register it
         if (publisher[_githubId] == address(0)) {
@@ -306,23 +321,51 @@ contract ChainwhizCore is ReentrancyGuard {
         }
         // To check if the github url linked with address is valid or not
         require(publisher[_githubId] == msg.sender, "POST_ISSUE_A");
+        //Check for the token to be either matic or valid token listed
+        // store the value that would be used to check in rest of the function
+        bool isMatic = keccak256(abi.encodePacked((_tokenName))) ==
+            keccak256(abi.encodePacked(("MATIC")));
+        require(
+            isMatic || tokenDetails[_tokenName] != address(0),
+            "INVALID TOKEN"
+        );
         // Reward should be greater than min reward
         require(
             _solverRewardAmount >= MIN_REWARD_AMOUNT &&
                 _solverRewardAmount <= MAX_REWARD_AMOUNT,
             "POST_ISSUE_B"
         );
-        // Check user has enough balance
-        require(
-            (msg.sender).balance >
-                (_solverRewardAmount + _communityVoterRewardAmount),
-            "POST_ISSUE_C"
-        );
+        // Check user has enough balance based on wheather token
+        if (isMatic) {
+            require(
+                (msg.sender).balance >
+                    (_solverRewardAmount + _communityVoterRewardAmount),
+                "POST_ISSUE_C"
+            );
+        } else {
+            require(
+                IERC20(tokenDetails[_tokenName]).balanceOf(msg.sender) >
+                    (_solverRewardAmount + _communityVoterRewardAmount),
+                "POST_ISSUE_C_TOKEN"
+            );
+        }
+
         // Check if the sent fund and the total amount set for rewards matches or not
-        require(
-            msg.value >= (_solverRewardAmount + _communityVoterRewardAmount),
-            "POST_ISSUE_D"
-        );
+        if (isMatic) {
+            require(
+                msg.value >=
+                    (_solverRewardAmount + _communityVoterRewardAmount),
+                "POST_ISSUE_D"
+            );
+        } else {
+            require(
+                IERC20(tokenDetails[_tokenName]).allowance(
+                    msg.sender,
+                    address(this)
+                ) >= (_solverRewardAmount + _communityVoterRewardAmount),
+                "POST_ISSUE_D_TOKEN"
+            );
+        }
         if (_communityVoterRewardAmount != 0) {
             require(
                 _communityVoterRewardAmount >= MIN_COMMUNITY_REWARD_AMOUNT &&
@@ -338,11 +381,9 @@ contract ChainwhizCore is ReentrancyGuard {
             _solverRewardAmount,
             _communityVoterRewardAmount
         );
-        bool _isCommunityReaward = false;
-        if (
-            _communityVoterRewardAmount >= MIN_COMMUNITY_REWARD_AMOUNT &&
-            _communityVoterRewardAmount <= MAX_COMMUNITY_REWARD_AMOUNT
-        ) _isCommunityReaward = true;
+        bool _isCommunityReaward = (_communityVoterRewardAmount >=
+            MIN_COMMUNITY_REWARD_AMOUNT &&
+            _communityVoterRewardAmount <= MAX_COMMUNITY_REWARD_AMOUNT);
 
         // Store issue related info
         _postIssue(
@@ -353,7 +394,9 @@ contract ChainwhizCore is ReentrancyGuard {
             _endSolverTime,
             _startVoteTime,
             _endVoteTime,
-            _isCommunityReaward
+            _isCommunityReaward,
+            _tokenName,
+            isMatic
         );
         return true;
     }
@@ -370,7 +413,9 @@ contract ChainwhizCore is ReentrancyGuard {
         uint256 _endSolverTime,
         uint256 _startVoteTime,
         uint256 _endVoteTime,
-        bool _isCommunityReaward
+        bool _isCommunityReaward,
+        string memory _tokenName,
+        bool _isMatic
     ) private onlyActiveContract nonReentrant {
         Question storage question = issueDetail[msg.sender][_githubUrl];
         question.publisher = _publisher;
@@ -382,7 +427,17 @@ contract ChainwhizCore is ReentrancyGuard {
         question.endVoteTime = _endVoteTime;
         question.isCommunityVote = _isCommunityReaward;
         question.questionStatus = QuestionStatus.Solve;
-        payable(address(this)).transfer(msg.value);
+        question.tokenName = _tokenName;
+        // Based on token type call the transfer function
+        if (_isMatic) {
+            payable(address(this)).transfer(msg.value);
+        } else {
+            IERC20(tokenDetails[_tokenName]).transferFrom(
+                msg.sender,
+                address(this),
+                (_communityVoterRewardAmount + _solverRewardAmount)
+            );
+        }
 
         //****************************  Logs for testing only  ****************************************** */
         // console.log((issueDetail[msg.sender][_githubUrl]).solverRewardAmount);
@@ -570,11 +625,13 @@ contract ChainwhizCore is ReentrancyGuard {
             publisher[_githubId] != msg.sender &&
                 solver[_githubId] != msg.sender &&
                 solution.solver != msg.sender &&
-                question.publisher != msg.sender &&
+                question.publisher != msg.sender 
+                &&
                 keccak256(abi.encodePacked((_publisherGithubId))) !=
                 keccak256(abi.encodePacked((_githubId))) &&
                 keccak256(abi.encodePacked((_solverGithubId))) !=
-                keccak256(abi.encodePacked((_githubId))),
+                keccak256(abi.encodePacked((_githubId)))
+                ,
             "STAKE_VOTE_E"
         );
         // To check is stake amount is within the limit
@@ -595,7 +652,12 @@ contract ChainwhizCore is ReentrancyGuard {
         );
         require(!voterVoted, "STAKE_VOTE_H");
         //store vote detail
-        _storeVoteDetail(_solutionLink, msg.sender, msg.value);
+        _storeVoteDetail(
+            _solutionLink,
+            msg.sender,
+            msg.value,
+            question.tokenName
+        );
 
         question.voterAddress.push(msg.sender);
         solution.voterAddress.push(msg.sender);
@@ -641,11 +703,13 @@ contract ChainwhizCore is ReentrancyGuard {
     function _storeVoteDetail(
         string memory _solutionLink,
         address _voter,
-        uint256 _stakeAmount
+        uint256 _stakeAmount,
+        string memory _tokenName
     ) private onlyActiveContract nonReentrant {
         Vote storage vote = voteDetails[_solutionLink][_voter];
         vote.voter = _voter;
         vote.amountStaked = _stakeAmount;
+        vote.rewardToken = _tokenName;
     }
 
     /// @notice Allows admin to set the amount to be unsstaked
@@ -656,7 +720,8 @@ contract ChainwhizCore is ReentrancyGuard {
     /// @param _publisher a parameter just like in doxygen (must be followed by parameter name)
     /// @param _solutionLinks a parameter just like in doxygen (must be followed by parameter name)
     /// @param _voterAddress a parameter just like in doxygen (must be followed by parameter name)
-    /// @param _amount a parameter just like in doxygen (must be followed by parameter name)
+    /// @param _baseAmount a parameter just like in doxygen (must be followed by parameter name)
+    /// @param _rewardAmount a parameter just like in doxygen (must be followed by parameter name)
     /// @param start a parameter just like in doxygen (must be followed by parameter name)
     /// @param end a parameter just like in doxygen (must be followed by parameter name)
     function setUnstakeAmount(
@@ -664,14 +729,15 @@ contract ChainwhizCore is ReentrancyGuard {
         address _publisher,
         string[] memory _solutionLinks,
         address[] memory _voterAddress,
-        uint256[] memory _amount,
+        uint256[] memory _baseAmount,
+        uint256[] memory _rewardAmount,
         uint256 start,
         uint256 end
     ) external onlyActiveContract onlyChainwhizAdmin {
         require(
             _solutionLinks.length == end &&
                 _voterAddress.length == end &&
-                _amount.length == end,
+                _baseAmount.length == end,
             "SET_UNSTAKE_A"
         );
         require(
@@ -684,26 +750,35 @@ contract ChainwhizCore is ReentrancyGuard {
             Vote storage vote = voteDetails[_solutionLinks[i]][
                 _voterAddress[i]
             ];
-            require(
-                vote.amountStaked != 0,
-                "SET_UNSTAKE_C"
-            );
-            vote.returnAmount = _amount[i];
-            if (vote.amountStaked > vote.returnAmount)
-                ChainwhizTreasary += (vote.amountStaked - vote.returnAmount);
+            require(vote.amountStaked != 0, "SET_UNSTAKE_C");
+            //todo: Change to set both base and reward amount
+            vote.returnBaseAmount = _baseAmount[i];
+            vote.returnRewardAmount = _rewardAmount[i];
+            if (vote.amountStaked > vote.returnBaseAmount)
+                ChainwhizTreasary += (vote.amountStaked -
+                    vote.returnBaseAmount);
         }
         issueDetail[_publisher][_issueLink].isUnstakeSet = true;
         emit UnstakeAmountSet(_publisher, _issueLink);
     }
 
     //For each voter to claim their staked amount(either slashed or with reward)
-    function unstake(string memory _solutionLink)
-        external
-        onlyActiveContract
-        nonReentrant
-    {
+    function unstake(string memory _solutionLink) external onlyActiveContract {
         Vote storage vote = voteDetails[_solutionLink][msg.sender];
-        _withdrawFromAave(vote.returnAmount, msg.sender);
+        _withdrawFromAave(vote.returnBaseAmount, msg.sender);
+        bool isMatic = keccak256(abi.encodePacked((vote.rewardToken))) ==
+            keccak256(abi.encodePacked(("MATIC")));
+        if (vote.returnRewardAmount != 0) {
+            if (isMatic) {
+                payable(msg.sender).transfer(vote.returnRewardAmount);
+            } else {
+                IERC20(tokenDetails[vote.rewardToken]).transfer(
+                    msg.sender,
+                    vote.returnRewardAmount
+                );
+            }
+        }
+
         vote.isUnstake = true;
         emit VoterUnstaked(_solutionLink);
     }
@@ -800,9 +875,13 @@ contract ChainwhizCore is ReentrancyGuard {
         );
         // update the state
         question.choosenSolution.escrowStatus = EscrowStatus.Complete;
+        bool isMatic = keccak256(abi.encodePacked((question.tokenName))) ==
+            keccak256(abi.encodePacked(("MATIC")));
         _transferFunds(
             payable(question.choosenSolution.solver),
-            question.solverRewardAmount
+            question.solverRewardAmount,
+            isMatic,
+            question.tokenName
         );
         emit EscrowTransferOwnership(
             question.publisher,
@@ -847,12 +926,17 @@ contract ChainwhizCore is ReentrancyGuard {
     //     );
     // }
 
-    function _transferFunds(address payable _receipient, uint256 _amount)
-        private
-        onlyActiveContract
-        nonReentrant
-    {
-        _receipient.transfer(_amount);
+    function _transferFunds(
+        address payable _receipient,
+        uint256 _amount,
+        bool _isMatic,
+        string memory _tokenName
+    ) private onlyActiveContract nonReentrant {
+        if (_isMatic) {
+            _receipient.transfer(_amount);
+        } else {
+            IERC20(tokenDetails[_tokenName]).transfer(_receipient, _amount);
+        }
     }
 
     function claimInterest(address _claimer)
@@ -902,19 +986,25 @@ contract ChainwhizCore is ReentrancyGuard {
                 question.questionStatus == QuestionStatus.Vote,
             "REFUND_ERROR_B"
         );
+        bool isMatic = keccak256(abi.encodePacked((question.tokenName))) ==
+            keccak256(abi.encodePacked(("MATIC")));
         //if flag == true, transfer the whole reward back
         if (flag) {
             _transferFunds(
                 payable(_publisherAddress),
                 question.solverRewardAmount +
-                    question.communityVoterRewardAmount
+                    question.communityVoterRewardAmount,
+                isMatic,
+                question.tokenName
             );
         }
         //if flag == false, transfer only the solver reward back
         else {
             _transferFunds(
                 payable(_publisherAddress),
-                question.solverRewardAmount
+                question.solverRewardAmount,
+                isMatic,
+                question.tokenName
             );
         }
     }
