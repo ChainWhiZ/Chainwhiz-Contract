@@ -11,7 +11,7 @@
   "author": "akp111",
   "license": "ISC",
   "dependencies": {
-    "@openzeppelin/contracts": "^4.4.1",
+    "@openzeppelin/contracts": "^4.4.2",
     "hardhat": "^2.6.7"
   },
   "devDependencies": {
