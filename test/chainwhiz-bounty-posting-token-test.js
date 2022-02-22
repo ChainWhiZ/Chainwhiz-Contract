@@ -25,6 +25,8 @@ describe("ChainwhizCore Bounty Posting(In tokens) --> postIssue validations", fu
         await chainwhiz.connect(owner).postIssue("abcd", "www.google.com", tokensBN(11), tokensBN(11), 123456, 23456, 8910, "DUM");
         const mappingDetail = (await chainwhiz.issueDetail(owner.address, "www.google.com"))
         const contractBalance = await dummyToken.balanceOf(chainwhiz.address)
+        const mapDetails = await chainwhiz.issueDetail(owner.address,"www.google.com")
+        console.log(mapDetails)
         expect(contractBalance).to.equal((22*Math.pow(10,18)).toString())
         expect(mappingDetail.solverRewardAmount).to.equal((11*Math.pow(10,18)).toString())
         // expect(trxObj).to.be.revertedWith("POST_ISSUE_C")

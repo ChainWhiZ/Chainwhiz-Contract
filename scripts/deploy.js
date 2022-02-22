@@ -15,7 +15,7 @@ async function main() {
 
   // We get the contract to deploy
   const ChainwhizCore = await hre.ethers.getContractFactory("ChainwhizCore");
-  const chainwhiz = await ChainwhizCore.deploy("0xcaFb7167635237AfCc0c24fCa9926FF25214656B");
+  const chainwhiz = await ChainwhizCore.deploy("0xfF66dbFcE8Ed4e95fE23a8C1E5BD692618144D9E");
 
   await chainwhiz.deployed();
 }

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.6.0 <=0.9.0;
+pragma solidity >=0.8.0 <0.9.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+// import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 import "./IWETHGateway.sol";
 import "./ILendingPoolAddressesProvider.sol";
 import "./IERC20.sol";
@@ -14,11 +14,11 @@ contract ChainwhizCore is ReentrancyGuard {
     //************************   State Variables   ************************ */
     address public ChainwhizAdmin;
     uint256 public MIN_REWARD_AMOUNT = 5 ether;
-    uint256 public MAX_REWARD_AMOUNT = 400 ether;
+    uint256 public MAX_REWARD_AMOUNT = 40000 ether;
     uint256 public MIN_STAKING_AMOUNT = 5 ether;
     uint256 public MAX_STAKE_AMOUNT = 40 ether;
-    uint256 public MIN_COMMUNITY_REWARD_AMOUNT = 10 ether;
-    uint256 public MAX_COMMUNITY_REWARD_AMOUNT = 40 ether;
+    uint256 public MIN_COMMUNITY_REWARD_AMOUNT = 5 ether;
+    uint256 public MAX_COMMUNITY_REWARD_AMOUNT = 40000 ether;
     bool public isContractActive = true;
     address public ethGateWayAddress;
     address public lendingPoolProviderAddress;
@@ -67,8 +67,10 @@ contract ChainwhizCore is ReentrancyGuard {
         EscrowStatus escrowStatus;
     }
 
+    //TODO: Add voter githubId or emit votergithubId in event
     struct Vote {
         address voter;
+        string githubId;
         uint256 votingPower;
         uint256 amountStaked;
         uint256 returnRewardAmount;
@@ -118,11 +120,11 @@ contract ChainwhizCore is ReentrancyGuard {
         string issueGithubUrl
     );
 
-    event VoteStaked(string solutionLink, address voter, uint256 amount);
+    event VoteStaked(string solutionLink, address voter, string voterGithudId, uint256 amount);
 
     event UnstakeAmountSet(address publisher, string issueLink);
 
-    event VoterUnstaked(string solutionLink);
+    event VoterUnstaked(string solutionLink, address voter);
 
     event EscorwInitiated(
         address publisher,
@@ -164,6 +166,7 @@ contract ChainwhizCore is ReentrancyGuard {
     /// @param _ChainwhizAdmin the admin address needs to be passed
     constructor(address _ChainwhizAdmin) ReentrancyGuard() {
         ChainwhizAdmin = _ChainwhizAdmin;
+        tokenDetails["MATIC"] = address(0);
     }
 
     /// @notice Used to set the new admin
@@ -323,8 +326,7 @@ contract ChainwhizCore is ReentrancyGuard {
         require(publisher[_githubId] == msg.sender, "POST_ISSUE_A");
         //Check for the token to be either matic or valid token listed
         // store the value that would be used to check in rest of the function
-        bool isMatic = keccak256(abi.encodePacked((_tokenName))) ==
-            keccak256(abi.encodePacked(("MATIC")));
+        bool isMatic = tokenDetails[_tokenName] == address(0);
         require(
             isMatic || tokenDetails[_tokenName] != address(0),
             "INVALID TOKEN"
@@ -338,13 +340,14 @@ contract ChainwhizCore is ReentrancyGuard {
         // Check user has enough balance based on wheather token
         if (isMatic) {
             require(
-                (msg.sender).balance >
+                //TODO: Change to msg.value instead of balance
+                msg.value >=
                     (_solverRewardAmount + _communityVoterRewardAmount),
                 "POST_ISSUE_C"
             );
         } else {
             require(
-                IERC20(tokenDetails[_tokenName]).balanceOf(msg.sender) >
+                IERC20(tokenDetails[_tokenName]).balanceOf(msg.sender) >=
                     (_solverRewardAmount + _communityVoterRewardAmount),
                 "POST_ISSUE_C_TOKEN"
             );
@@ -428,6 +431,7 @@ contract ChainwhizCore is ReentrancyGuard {
         question.isCommunityVote = _isCommunityReaward;
         question.questionStatus = QuestionStatus.Solve;
         question.tokenName = _tokenName;
+        question.questionStatus = QuestionStatus.Solve;
         // Based on token type call the transfer function
         if (_isMatic) {
             payable(address(this)).transfer(msg.value);
@@ -625,13 +629,11 @@ contract ChainwhizCore is ReentrancyGuard {
             publisher[_githubId] != msg.sender &&
                 solver[_githubId] != msg.sender &&
                 solution.solver != msg.sender &&
-                question.publisher != msg.sender 
-                &&
+                question.publisher != msg.sender &&
                 keccak256(abi.encodePacked((_publisherGithubId))) !=
                 keccak256(abi.encodePacked((_githubId))) &&
                 keccak256(abi.encodePacked((_solverGithubId))) !=
-                keccak256(abi.encodePacked((_githubId)))
-                ,
+                keccak256(abi.encodePacked((_githubId))),
             "STAKE_VOTE_E"
         );
         // To check is stake amount is within the limit
@@ -656,6 +658,7 @@ contract ChainwhizCore is ReentrancyGuard {
             _solutionLink,
             msg.sender,
             msg.value,
+            _githubId,
             question.tokenName
         );
 
@@ -664,7 +667,7 @@ contract ChainwhizCore is ReentrancyGuard {
         // lend to aave protocol
         _lendToAave(msg.value);
         //emit event
-        emit VoteStaked(_solutionLink, msg.sender, msg.value);
+        emit VoteStaked(_solutionLink, msg.sender, _githubId, msg.value);
     }
 
     function _checkAlreadyVoted(address[] memory _voterAddress, address _voter)
@@ -704,12 +707,14 @@ contract ChainwhizCore is ReentrancyGuard {
         string memory _solutionLink,
         address _voter,
         uint256 _stakeAmount,
+        string memory voterGithubId,
         string memory _tokenName
     ) private onlyActiveContract nonReentrant {
         Vote storage vote = voteDetails[_solutionLink][_voter];
         vote.voter = _voter;
         vote.amountStaked = _stakeAmount;
         vote.rewardToken = _tokenName;
+        vote.githubId = voterGithubId;
     }
 
     /// @notice Allows admin to set the amount to be unsstaked
@@ -751,7 +756,6 @@ contract ChainwhizCore is ReentrancyGuard {
                 _voterAddress[i]
             ];
             require(vote.amountStaked != 0, "SET_UNSTAKE_C");
-            //todo: Change to set both base and reward amount
             vote.returnBaseAmount = _baseAmount[i];
             vote.returnRewardAmount = _rewardAmount[i];
             if (vote.amountStaked > vote.returnBaseAmount)
@@ -763,11 +767,11 @@ contract ChainwhizCore is ReentrancyGuard {
     }
 
     //For each voter to claim their staked amount(either slashed or with reward)
+    //TODO: add the voter address too in the events
     function unstake(string memory _solutionLink) external onlyActiveContract {
         Vote storage vote = voteDetails[_solutionLink][msg.sender];
         _withdrawFromAave(vote.returnBaseAmount, msg.sender);
-        bool isMatic = keccak256(abi.encodePacked((vote.rewardToken))) ==
-            keccak256(abi.encodePacked(("MATIC")));
+        bool isMatic = tokenDetails[vote.rewardToken] == address(0);
         if (vote.returnRewardAmount != 0) {
             if (isMatic) {
                 payable(msg.sender).transfer(vote.returnRewardAmount);
@@ -780,7 +784,7 @@ contract ChainwhizCore is ReentrancyGuard {
         }
 
         vote.isUnstake = true;
-        emit VoterUnstaked(_solutionLink);
+        emit VoterUnstaked(_solutionLink, msg.sender);
     }
 
     function _withdrawFromAave(uint256 _amount, address _to)
@@ -875,8 +879,7 @@ contract ChainwhizCore is ReentrancyGuard {
         );
         // update the state
         question.choosenSolution.escrowStatus = EscrowStatus.Complete;
-        bool isMatic = keccak256(abi.encodePacked((question.tokenName))) ==
-            keccak256(abi.encodePacked(("MATIC")));
+        bool isMatic = tokenDetails[question.tokenName] == address(0);
         _transferFunds(
             payable(question.choosenSolution.solver),
             question.solverRewardAmount,
@@ -959,7 +962,6 @@ contract ChainwhizCore is ReentrancyGuard {
         external
         onlyActiveContract
         onlyChainwhizAdmin
-        nonReentrant
     {
         //check if the amount is less than the amount in treasery
         require(_amount <= ChainwhizTreasary, "TREASARY_WITHDRAW_A");
@@ -986,8 +988,7 @@ contract ChainwhizCore is ReentrancyGuard {
                 question.questionStatus == QuestionStatus.Vote,
             "REFUND_ERROR_B"
         );
-        bool isMatic = keccak256(abi.encodePacked((question.tokenName))) ==
-            keccak256(abi.encodePacked(("MATIC")));
+        bool isMatic = tokenDetails[question.tokenName] == address(0);
         //if flag == true, transfer the whole reward back
         if (flag) {
             _transferFunds(
