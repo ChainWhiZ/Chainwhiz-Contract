@@ -53,6 +53,8 @@ describe("ChainwhizCore Bounty Posting --> postIssue validations", function () {
 
   it("Should successfully allow posting multiple bounties", async function () {
     expect(chainwhiz.connect(a2).postIssue("efg", "www.google.com", tokensBN(10), tokensBN(12), 123456, 23456, 8910, "MATIC", { value: tokensBN(22) })).to.be.emit(chainwhiz, "IssuePosted");
+    const mapDetails = await chainwhiz.issueDetail(a2.address,"www.google.com")
+    console.log(mapDetails)
     expect(chainwhiz.connect(a2).postIssue("efg", "www.yahoo.com", tokensBN(12), tokensBN(20), 123456, 23456, 8910, "MATIC", { value: tokensBN(32) })).to.be.emit(chainwhiz, "IssuePosted");
   });
 
